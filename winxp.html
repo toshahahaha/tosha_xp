@@ -465,6 +465,86 @@
     <div class="win-statusbar">Send me a message</div>
   </div>
 
+  <!-- =================== MUSIC PLAYER WINDOW =================== -->
+  <div class="xp-window" id="music-player" style="top:60px; left:200px; width:420px; height:580px;">
+    <div class="win-resize win-resize-nw" onmousedown="startResize(event,'music-player','nw')"></div>
+    <div class="win-resize win-resize-n"  onmousedown="startResize(event,'music-player','n')"></div>
+    <div class="win-resize win-resize-ne" onmousedown="startResize(event,'music-player','ne')"></div>
+    <div class="win-resize win-resize-w"  onmousedown="startResize(event,'music-player','w')"></div>
+    <div class="win-resize win-resize-e"  onmousedown="startResize(event,'music-player','e')"></div>
+    <div class="win-resize win-resize-sw" onmousedown="startResize(event,'music-player','sw')"></div>
+    <div class="win-resize win-resize-s"  onmousedown="startResize(event,'music-player','s')"></div>
+    <div class="win-resize win-resize-se" onmousedown="startResize(event,'music-player','se')"></div>
+    <div class="win-titlebar" onmousedown="startDrag(event, 'music-player')">
+      <span class="win-title-icon">🎵</span>
+      <span class="win-title-text">Music Player</span>
+      <div class="win-controls">
+        <div class="win-btn win-btn-min" onclick="minimizeWin('music-player')">🗕</div>
+        <div class="win-btn win-btn-max">🗗</div>
+        <div class="win-btn win-btn-close" onclick="closeWindow('music-player')">✕</div>
+      </div>
+    </div>
+    <div class="win-body" style="background:#c8c8c8; display:flex; align-items:center; justify-content:center; padding:20px;">
+      <!-- iPod Classic Shell -->
+      <div class="ipod-shell">
+        <!-- Screen area -->
+        <div class="ipod-screen-bezel">
+          <div class="ipod-screen">
+            <!-- Status bar -->
+            <div class="ipod-status-bar">
+              <span class="ipod-battery">▐▐▐▐▌</span>
+            </div>
+            <!-- Now Playing header -->
+            <div class="ipod-now-playing-header">Now Playing</div>
+            <!-- Album art placeholder -->
+            <div class="ipod-album-art">
+              <div class="ipod-art-inner">
+                <div class="ipod-music-note">♫</div>
+              </div>
+            </div>
+            <!-- Song info -->
+            <div class="ipod-song-info">
+              <div class="ipod-song-title" id="ipod-marquee">
+                <span>iPod touch</span>
+              </div>
+              <div class="ipod-song-artist">Ninajirachi</div>
+              <div class="ipod-song-album">Bittersweet EP</div>
+            </div>
+            <!-- Progress bar -->
+            <div class="ipod-progress-wrap">
+              <span class="ipod-time" id="ipod-elapsed">0:00</span>
+              <div class="ipod-progress-track">
+                <div class="ipod-progress-fill" id="ipod-fill"></div>
+              </div>
+              <span class="ipod-time" id="ipod-total">3:24</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Click wheel -->
+        <div class="ipod-wheel-wrap">
+          <div class="ipod-wheel" id="ipod-wheel">
+            <!-- Center button -->
+            <div class="ipod-center-btn" onclick="ipodPlayPause()" title="Play/Pause"></div>
+            <!-- Cardinal labels -->
+            <div class="ipod-wheel-label ipod-wheel-menu">MENU</div>
+            <div class="ipod-wheel-label ipod-wheel-fwd" onclick="ipodSkip()" title="Next">▶▶</div>
+            <div class="ipod-wheel-label ipod-wheel-rew" onclick="ipodRewind()" title="Previous">◀◀</div>
+            <div class="ipod-wheel-label ipod-wheel-play" onclick="ipodPlayPause()" title="Play/Pause">▶❙❙</div>
+          </div>
+        </div>
+
+        <!-- Hold switch & headphone jack row -->
+        <div class="ipod-top-row">
+          <div class="ipod-hold-switch">
+            <div class="ipod-hold-knob"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="win-statusbar">Now Playing — iPod touch · Ninajirachi</div>
+  </div>
+
   <!-- =================== TASKBAR =================== -->
   <div id="taskbar">
     <button class="start-btn" id="start-btn" onclick="toggleStartMenu()">
@@ -514,7 +594,7 @@
           <div class="sm-icon">👤</div>
           <div class="sm-item-text"><div class="sm-item-main">About Me</div></div>
         </div>
-        <div class="sm-item">
+        <div class="sm-item" onclick="openWindow('music-player'); toggleStartMenu()">
           <div class="sm-icon">🎵</div>
           <div class="sm-item-text"><div class="sm-item-main">Music Player</div></div>
         </div>

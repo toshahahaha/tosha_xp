@@ -118,7 +118,8 @@ function addTaskbarItem(id) {
     'about-me': '👤 About Me',
     'my-resume': '📄 My Resume',
     'my-projects': '🌐 My Projects',
-    'contact-me': '✉️ Contact Me'
+    'contact-me': '✉️ Contact Me',
+    'music-player': '🎵 Music Player'
   };
   const tb = document.getElementById('taskbar-windows');
   const item = document.createElement('div');
@@ -265,3 +266,59 @@ function sendMsg() {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') toggleStartMenu(false);
 });
+
+// ===================== IPOD PLAYER =====================
+const IPOD_DURATION = 204; // 3:24 in seconds
+let ipodSeconds = 0;
+let ipodPlaying = false;
+let ipodTimer = null;
+
+function ipodTick() {
+  if (!ipodPlaying) return;
+  ipodSeconds = Math.min(ipodSeconds + 1, IPOD_DURATION);
+  const pct = (ipodSeconds / IPOD_DURATION) * 100;
+  const fill = document.getElementById('ipod-fill');
+  const elapsed = document.getElementById('ipod-elapsed');
+  if (fill) fill.style.width = pct + '%';
+  if (elapsed) elapsed.textContent = formatIpodTime(ipodSeconds);
+  if (ipodSeconds >= IPOD_DURATION) {
+    ipodSeconds = 0;
+  }
+}
+
+function formatIpodTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = String(s % 60).padStart(2, '0');
+  return `${m}:${sec}`;
+}
+
+function ipodPlayPause() {
+  ipodPlaying = !ipodPlaying;
+  const wheel = document.getElementById('ipod-wheel');
+  if (ipodPlaying) {
+    if (!ipodTimer) ipodTimer = setInterval(ipodTick, 1000);
+    if (wheel) wheel.classList.add('ipod-spinning');
+  } else {
+    if (wheel) wheel.classList.remove('ipod-spinning');
+  }
+}
+
+function ipodSkip() {
+  ipodSeconds = 0;
+  const fill = document.getElementById('ipod-fill');
+  const elapsed = document.getElementById('ipod-elapsed');
+  if (fill) fill.style.width = '0%';
+  if (elapsed) elapsed.textContent = '0:00';
+  if (ipodPlaying) {
+    const wheel = document.getElementById('ipod-wheel');
+    if (wheel) { wheel.classList.remove('ipod-spinning'); void wheel.offsetWidth; wheel.classList.add('ipod-spinning'); }
+  }
+}
+
+function ipodRewind() {
+  ipodSeconds = 0;
+  const fill = document.getElementById('ipod-fill');
+  const elapsed = document.getElementById('ipod-elapsed');
+  if (fill) fill.style.width = '0%';
+  if (elapsed) elapsed.textContent = '0:00';
+}
