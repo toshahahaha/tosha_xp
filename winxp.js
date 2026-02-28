@@ -1,3 +1,72 @@
+// ===================== SITE LOADING (MitchIvin-style) =====================
+(function () {
+  const MIN_MS = 3200;
+  const MAX_MS = 6000;
+  const FADE_MS = 280; // must match CSS
+
+  function rand(min, max){ return Math.floor(min + Math.random() * (max - min + 1)); }
+
+  function animateBar() {
+    const boot = document.getElementById('site-boot');
+    if (!boot) return () => {};
+    const blocks = boot.querySelector('.site-boot__barBlocks');
+    const track  = boot.querySelector('.site-boot__barTrack');
+    if (!blocks || !track) return () => {};
+
+    let raf = 0;
+    let start = performance.now();
+    const speed = 210; // px/sec
+
+    const loop = (t) => {
+      const dt = (t - start) / 1000;
+      const w = track.getBoundingClientRect().width;
+      const from = -90;
+      const to = w + 20;
+      const range = to - from;
+      const x = from + ((dt * speed) % range);
+      blocks.style.transform = `translateX(${x}px)`;
+      raf = requestAnimationFrame(loop);
+    };
+
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }
+
+  function startBoot() {
+    const boot = document.getElementById('site-boot');
+    const login = document.getElementById('login-screen');
+    if (!boot || !login) return;
+
+    // Hide login while “Still booting…”
+    login.style.display = 'none';
+    boot.style.display = 'block';
+    boot.classList.remove('is-fading');
+    boot.setAttribute('aria-hidden', 'false');
+
+    const stop = animateBar();
+    const hold = rand(MIN_MS, MAX_MS);
+
+    const finish = () => {
+      stop();
+      boot.classList.add('is-fading');
+      boot.setAttribute('aria-hidden', 'true');
+      setTimeout(() => {
+        boot.style.display = 'none';
+        login.style.display = '';
+      }, FADE_MS);
+    };
+
+    // Optional skip like the real “boot”: click/Enter/Esc
+    const onKey = (e) => (e.key === 'Enter' || e.key === 'Escape') && finish();
+    window.addEventListener('keydown', onKey, { once: true });
+    boot.addEventListener('click', finish, { once: true });
+
+    setTimeout(finish, hold);
+  }
+
+  window.addEventListener('load', startBoot);
+})();
+
 // ===================== STATE =====================
 let dragState = null;
 let resizeState = null;
@@ -322,3 +391,6 @@ function ipodRewind() {
   if (fill) fill.style.width = '0%';
   if (elapsed) elapsed.textContent = '0:00';
 }
+
+
+

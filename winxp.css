@@ -1063,7 +1063,7 @@ button, input, textarea, select, label {
   flex-direction: column;
   align-items: center;
   width: 220px;
-  background: linear-gradient(180deg, #f0f0f0 0%, #e0e0e0 40%, #d0d0d0 100%);
+  background: linear-gradient(180deg, #fb5bc0 0%, #fb5bc0 40%, #fb5bc0 100%);
   border-radius: 28px;
   box-shadow:
     0 0 0 1px #999,
@@ -1379,4 +1379,182 @@ button, input, textarea, select, label {
   left: 50%;
   transform: translateX(-50%);
   font-size: 9px;
+}
+
+/* ===================== BOOT LAYOUT: match screenshot ===================== */
+#site-boot{
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 30000;
+  opacity: 1;
+  transition: opacity 280ms linear;
+}
+#site-boot.is-fading{
+  opacity: 0;
+  pointer-events: none;
+}
+
+.site-boot__wrap{
+  position: absolute;
+  inset: 0;
+}
+
+/* Center cluster sits slightly above vertical center */
+.site-boot__center{
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -54%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Icon size like screenshot */
+.site-boot__mark{
+  width: 340px;
+  height: auto;
+  display: grid;
+  place-items: center;
+}
+.site-boot__flagImg{
+  width: 300px;
+  height: auto;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 10px 18px rgba(0,0,0,.65));
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Name + xp on same baseline (xp tucked to the right) */
+.site-boot__nameLine{
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: -6px;
+}
+
+.site-boot__name{
+  font-family: "Wix Madefor Display", "Trebuchet MS", Tahoma, Arial, sans-serif;
+  font-weight: 800;
+  font-size: 86px;           /* tuned to screenshot */
+  letter-spacing: -1.5px;
+  color: #fff;
+  line-height: 0.95;
+  text-shadow: 0 2px 0 rgba(0,0,0,.65);
+}
+
+/* xp color/size/offset like screenshot */
+.site-boot__xp{
+  font-family: "Wix Madefor Display", "Trebuchet MS", Tahoma, Arial, sans-serif;
+  font-weight: 800;
+  font-size: 46px;
+  color: #c75a2b;
+  letter-spacing: -1px;
+  transform: translateY(18px);
+  text-shadow: 0 2px 0 rgba(0,0,0,.65);
+}
+
+/* Role italic under the name */
+.site-boot__role{
+  font-family: "Work Sans", Tahoma, Arial, sans-serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: 24px;
+  color: rgba(255,255,255,.92);
+  margin-top: -14px;
+}
+
+/* Bar right under role (match spacing) */
+.site-boot__bar{
+  margin-top: 10px;
+}
+
+.site-boot__barTrack{
+  width: 310px;
+  height: 18px;
+  border-radius: 10px;
+  background: #000;
+  border: 2px solid #8f8f8f;
+  box-shadow: inset 0 0 0 2px #111;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 3 XP blocks (JS animates translateX) */
+.site-boot__barBlocks{
+  position: absolute;
+  top: 3px;
+  left: -120px;
+  width: 120px;
+  height: 12px;
+  filter:
+    drop-shadow(0 0 4px rgba(70,130,255,.65))
+    drop-shadow(0 0 10px rgba(70,130,255,.35));
+}
+.site-boot__barBlocks::before{
+  content:"";
+  position:absolute;
+  width: 12px;
+  height: 12px;
+  background: linear-gradient(#8cc0ff, #2f62ff);
+  border: 1px solid rgba(0,0,0,.35);
+  box-shadow: 16px 0 0 0 #2f62ff, 32px 0 0 0 #2f62ff;
+}
+
+/* Bottom corners */
+.site-boot__corner{
+  position: absolute;
+  bottom: 34px;
+  color: rgba(255,255,255,.9);
+  font-family: Tahoma, Arial, sans-serif;
+  font-size: 18px;
+  line-height: 1.35;
+  text-shadow: 0 1px 0 rgba(0,0,0,.85);
+  opacity: .92;
+}
+
+.site-boot__corner--left{
+  left: 44px;
+  text-align: left;
+}
+
+.site-boot__corner--right{
+  right: 44px;
+  text-align: right;
+}
+
+/* Bottom-right “Portfolio®” */
+.site-boot__wordmark{
+  transform: skewX(-14deg);
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.site-boot__word{
+  font-family: "Arial Black", Impact, "Trebuchet MS", Arial, sans-serif;
+  font-weight: 900;
+  font-size: 56px; /* screenshot-ish */
+  letter-spacing: -1.5px;
+  color: #fff;
+  text-shadow: 0 2px 0 rgba(0,0,0,.65);
+}
+.site-boot__reg{
+  font-family: Arial, sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  position: relative;
+  top: 6px;
+}
+
+/* Responsive scaling without breaking composition */
+@media (max-width: 900px){
+  .site-boot__name{ font-size: 64px; }
+  .site-boot__xp{ font-size: 36px; transform: translateY(14px); }
+  .site-boot__role{ font-size: 18px; }
+  .site-boot__flagImg{ width: 240px; }
+  .site-boot__word{ font-size: 42px; }
+  .site-boot__corner{ font-size: 14px; }
 }
