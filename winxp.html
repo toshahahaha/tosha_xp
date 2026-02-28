@@ -641,7 +641,7 @@
           <div class="sm-icon">▶️</div>
           <div class="sm-item-text"><div class="sm-item-main">Media Player</div></div>
         </div>
-        <div class="sm-item">
+        <div class="sm-item" onclick="openWindow('paint'); toggleStartMenu()">
           <div class="sm-icon">🖼️</div>
           <div class="sm-item-text"><div class="sm-item-main">Paint</div></div>
         </div>
@@ -656,7 +656,7 @@
           <div class="sm-icon">📷</div>
           <div class="sm-item-text"><div class="sm-item-main">Instagram</div></div>
         </div>
-        <div class="sm-item">
+        <div class="sm-item" onclick="window.open('https://github.com/toshahahaha','_blank')">
           <div class="sm-icon">🐙</div>
           <div class="sm-item-text"><div class="sm-item-main">GitHub</div></div>
         </div>
@@ -706,6 +706,103 @@
     </div>
   </div>
 
+  <!-- =================== PAINT =================== -->
+<div class="xp-window" id="paint" style="width: 860px; height: 620px; left: 80px; top: 70px;">
+  <div class="win-titlebar">
+    <div class="win-title">
+      <span class="win-title-icon">🎨</span>
+      Paint
+    </div>
+    <div class="win-controls">
+      <button class="win-btn" onclick="minimizeWindow('paint')" title="Minimize">_</button>
+      <button class="win-btn" onclick="maximizeWindow('paint')" title="Maximize">▢</button>
+      <button class="win-btn close" onclick="closeWindow('paint')" title="Close">✕</button>
+    </div>
+  </div>
+
+  <div class="win-menubar paint-menubar">
+    <button class="paint-menu-btn" data-menu="file">File</button>
+    <button class="paint-menu-btn" data-menu="edit">Edit</button>
+    <button class="paint-menu-btn" data-menu="view">View</button>
+    <button class="paint-menu-btn" data-menu="image">Image</button>
+    <button class="paint-menu-btn" data-menu="colors">Colors</button>
+    <button class="paint-menu-btn" data-menu="help">Help</button>
+
+    <!-- simple dropdown -->
+    <div class="paint-menu" id="paintMenu">
+      <button data-action="new">New</button>
+      <button data-action="open">Open…</button>
+      <button data-action="save">Save As…</button>
+      <div class="sep"></div>
+      <button data-action="clear">Clear Image</button>
+      <div class="sep"></div>
+      <button data-action="exit">Exit</button>
+    </div>
+  </div>
+
+  <div class="win-content paint-app">
+    <!-- Left tool palette -->
+    <div class="paint-tools" role="toolbar" aria-label="Tools">
+      <button class="tool active" data-tool="pencil" title="Pencil">✏️</button>
+      <button class="tool" data-tool="brush" title="Brush">🖌️</button>
+      <button class="tool" data-tool="eraser" title="Eraser">🧽</button>
+      <div class="paint-divider"></div>
+      <button class="tool" data-tool="line" title="Line">／</button>
+      <button class="tool" data-tool="rect" title="Rectangle">▭</button>
+      <button class="tool" data-tool="ellipse" title="Ellipse">◯</button>
+      <div class="paint-divider"></div>
+      <button class="tool" data-tool="fill" title="Fill">🪣</button>
+      <div class="paint-divider"></div>
+
+      <label class="paint-size">
+        Size
+        <input id="paintSize" type="range" min="1" max="30" value="3" />
+      </label>
+
+      <div class="paint-actions">
+        <button id="paintUndo" title="Undo">↶</button>
+        <button id="paintRedo" title="Redo">↷</button>
+      </div>
+
+      <!-- Hidden file input -->
+      <input id="paintFile" type="file" accept="image/*" hidden />
+    </div>
+
+    <!-- Canvas area -->
+    <div class="paint-stage">
+      <div class="paint-canvas-wrap">
+        <canvas id="paintCanvas" width="1200" height="800"></canvas>
+      </div>
+
+      <!-- Bottom color palette -->
+      <div class="paint-colors">
+        <div class="swatch-pair">
+          <div class="swatch main" id="paintPrimary" title="Primary color"></div>
+          <div class="swatch alt" id="paintSecondary" title="Secondary color"></div>
+        </div>
+
+        <div class="palette" id="paintPalette"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="win-statusbar paint-status">
+    <span id="paintStatusLeft">Ready</span>
+    <span id="paintStatusRight">1200 × 800px</span>
+  </div>
+
+  <!-- Resize handles (match your existing window system if you use these) -->
+  <div class="win-resize win-resize-n"></div>
+  <div class="win-resize win-resize-s"></div>
+  <div class="win-resize win-resize-w"></div>
+  <div class="win-resize win-resize-e"></div>
+  <div class="win-resize win-resize-nw"></div>
+  <div class="win-resize win-resize-ne"></div>
+  <div class="win-resize win-resize-sw"></div>
+  <div class="win-resize win-resize-se"></div>
+</div>
+<!-- =================== /PAINT =================== -->
+
   <!-- Log Off Dialog -->
   <div id="logoff-dialog">
     <div class="logoff-window">
@@ -722,6 +819,8 @@
     </div>
   </div>
 </div>
+
+
 
 <script src="winxp.js"></script>
 </body>

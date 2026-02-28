@@ -1558,3 +1558,235 @@ button, input, textarea, select, label {
   .site-boot__word{ font-size: 42px; }
   .site-boot__corner{ font-size: 14px; }
 }
+
+/* ===================== Typography tune ===================== */
+.site-boot__nameLine{
+  gap: 6px;                 /* bring xp closer */
+  margin-top: -10px;        /* tuck up slightly */
+}
+
+/* Main name: tighter + a touch condensed + heavier */
+.site-boot__name{
+  font-family: "Wix Madefor Display", "Trebuchet MS", Tahoma, Arial, sans-serif;
+  font-weight: 900;
+  font-size: 88px;          /* slightly larger like reference */
+  letter-spacing: -3.2px;   /* tighter */
+  line-height: 0.88;
+  transform: scaleX(0.94) skewX(-13deg);  /* subtle condensed look */
+  transform-origin: center;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  text-shadow: 0 2px 0 rgba(0,0,0,.68);
+}
+
+/* xp: closer + a bit higher + tighter */
+.site-boot__xp{
+  font-family: "Wix Madefor Display", "Trebuchet MS", Tahoma, Arial, sans-serif;
+  font-weight: 900;
+  font-size: 46px;
+  letter-spacing: -1.8px;
+  color: #c75a2b;
+  transform: translateY(-15px) scaleX(0.96) skewX(-13deg);
+  transform-origin: left;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  text-shadow: 0 2px 0 rgba(0,0,0,.68);
+}
+
+/* Subtitle: smaller, tighter italic, slightly more tracking */
+.site-boot__role{
+  font-family: "Work Sans", Tahoma, Arial, sans-serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: 0.6px;
+  color: rgba(255,255,255,.92);
+  margin-top: -1px;        /* pull closer to name */
+  transform: scaleX(0.98);
+  transform-origin: center;
+  -webkit-font-smoothing: antialiased;
+} */
+
+/* Optional: make everything a hair crisper on dark bg */
+.site-boot__name,
+.site-boot__xp,
+.site-boot__role,
+.site-boot__corner,
+.site-boot__wordmark{
+  filter: saturate(1.02) contrast(1.02);
+}
+
+/* ===================== PAINT (mini) ===================== */
+.paint-app{
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  height: 100%;
+  background: #d4d0c8;
+}
+
+.paint-menubar{
+  position: relative;
+}
+
+.paint-menu-btn{
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 2px 10px;
+  font-size: 12px;
+  cursor: default;
+}
+.paint-menu-btn:hover{
+  border-color:#0a246a;
+  background: #cfe3ff;
+}
+
+.paint-menu{
+  position: absolute;
+  top: 22px;
+  left: 6px;
+  width: 190px;
+  background: #f3f3f3;
+  border: 1px solid #7f7f7f;
+  box-shadow: 2px 2px 0 rgba(0,0,0,.25);
+  display: none;
+  padding: 4px 0;
+  z-index: 50;
+}
+.paint-menu.show{ display: block; }
+.paint-menu button{
+  width: 100%;
+  text-align: left;
+  font-size: 12px;
+  padding: 5px 10px;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+.paint-menu button:hover{
+  background: #316ac5;
+  color: white;
+}
+.paint-menu .sep{
+  height: 1px;
+  background: #c0c0c0;
+  margin: 4px 6px;
+}
+
+.paint-tools{
+  padding: 8px 6px;
+  border-right: 1px solid #a9a9a9;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.paint-tools .tool{
+  height: 34px;
+  border: 1px solid #808080;
+  background: linear-gradient(#f6f6f6, #dcdcdc);
+  border-radius: 3px;
+  cursor: default;
+  font-size: 16px;
+  display: grid;
+  place-items: center;
+}
+.paint-tools .tool.active{
+  background: linear-gradient(#cfe3ff, #a8c8ff);
+  border-color:#0a246a;
+}
+
+.paint-divider{
+  height: 1px;
+  background: #a9a9a9;
+  margin: 6px 2px;
+}
+
+.paint-size{
+  margin-top: 4px;
+  font-size: 11px;
+  display: grid;
+  gap: 4px;
+}
+.paint-size input{ width: 100%; }
+
+.paint-actions{
+  margin-top: 6px;
+  display: grid;
+  gap: 6px;
+}
+.paint-actions button{
+  height: 30px;
+  border: 1px solid #808080;
+  background: linear-gradient(#f6f6f6, #dcdcdc);
+  border-radius: 3px;
+  cursor: default;
+  font-size: 14px;
+}
+.paint-actions button:disabled{
+  opacity: .45;
+}
+
+.paint-stage{
+  display: grid;
+  grid-template-rows: 1fr 56px;
+  min-width: 0;
+}
+
+.paint-canvas-wrap{
+  padding: 10px;
+  overflow: auto;
+  background: #bdbdbd;
+}
+
+#paintCanvas{
+  background: white;
+  border: 1px solid #666;
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,.6);
+  image-rendering: pixelated;
+  cursor: crosshair;
+}
+
+.paint-colors{
+  border-top: 1px solid #a9a9a9;
+  background: #d4d0c8;
+  display: grid;
+  grid-template-columns: 66px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+}
+
+.swatch-pair{
+  display: grid;
+  width: 54px;
+  height: 40px;
+  position: relative;
+}
+.swatch{
+  width: 30px;
+  height: 30px;
+  border: 1px solid #333;
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,.5);
+}
+.swatch.main{ position:absolute; left:0; top:0; z-index:2; }
+.swatch.alt{ position:absolute; left:18px; top:10px; opacity:.95; }
+
+.palette{
+  display: grid;
+  grid-template-columns: repeat(14, 1fr);
+  gap: 3px;
+}
+.palette .color{
+  height: 18px;
+  border: 1px solid rgba(0,0,0,.35);
+  cursor: pointer;
+}
+.palette .color:active{
+  transform: translateY(1px);
+}
+
+.paint-status{
+  display:flex;
+  justify-content: space-between;
+  padding: 3px 8px;
+}
