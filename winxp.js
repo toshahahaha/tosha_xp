@@ -1,5 +1,6 @@
 // ===================== STATE =====================
 let dragState = null;
+let resizeState = null;
 let activeWindow = null;
 let minimizedWindows = {};
 let startMenuOpen = false;
@@ -174,6 +175,64 @@ function stopDrag() {
   dragState = null;
   document.removeEventListener('mousemove', onDrag);
   document.removeEventListener('mouseup', stopDrag);
+}
+
+// ===================== RESIZING =====================
+function startResize(e, id, direction) {
+  e.preventDefault();
+  e.stopPropagation();
+  setActiveWindow(id);
+  const win = document.getElementById(id);
+  const rect = win.getBoundingClientRect();
+  resizeState = {
+    id,
+    direction,
+    startX: e.clientX,
+    startY: e.clientY,
+    origLeft:   rect.left,
+    origTop:    rect.top,
+    origWidth:  rect.width,
+    origHeight: rect.height
+  };
+  document.addEventListener('mousemove', onResize);
+  document.addEventListener('mouseup', stopResize);
+}
+
+function onResize(e) {
+  if (!resizeState) return;
+  const { id, direction, startX, startY, origLeft, origTop, origWidth, origHeight } = resizeState;
+  const win = document.getElementById(id);
+  const minW = 300;
+  const minH = 200;
+  const dx = e.clientX - startX;
+  const dy = e.clientY - startY;
+
+  let newLeft   = origLeft;
+  let newTop    = origTop;
+  let newWidth  = origWidth;
+  let newHeight = origHeight;
+
+  if (direction.includes('e')) newWidth  = Math.max(minW, origWidth  + dx);
+  if (direction.includes('s')) newHeight = Math.max(minH, origHeight + dy);
+  if (direction.includes('w')) {
+    newWidth = Math.max(minW, origWidth - dx);
+    newLeft  = origLeft + origWidth - newWidth;
+  }
+  if (direction.includes('n')) {
+    newHeight = Math.max(minH, origHeight - dy);
+    newTop    = origTop + origHeight - newHeight;
+  }
+
+  win.style.left   = newLeft   + 'px';
+  win.style.top    = newTop    + 'px';
+  win.style.width  = newWidth  + 'px';
+  win.style.height = newHeight + 'px';
+}
+
+function stopResize() {
+  resizeState = null;
+  document.removeEventListener('mousemove', onResize);
+  document.removeEventListener('mouseup', stopResize);
 }
 
 // ===================== START MENU =====================
