@@ -988,729 +988,729 @@ function ipodRewind() {
 })();
 
 
-// ===================== MINECRAFT GAME =====================
+// ===================== MINECRAFT GAME (First-Person 3D) =====================
 (function () {
-  // --- Constants ---
-  const TILE = 32;        // px per block
-  const WW   = 256;       // world width (blocks)
-  const WH   = 80;        // world height (blocks)
-  const PW   = 0.8;       // player width (blocks)
-  const PH   = 1.85;      // player height (blocks)
-  const GRAVITY    = 28;  // blocks/s²
-  const JUMP_VEL   = -11; // blocks/s
-  const WALK_SPEED = 5;   // blocks/s
-  const REACH      = 5.5; // blocks
-  const DAY_MS     = 90000; // ms per full day
+  // --- World dimensions ---
+  const WX = 64, WY = 64, WZ = 64; // world size in blocks (X, Y=height, Z)
 
   // --- Block IDs ---
-  const B = { AIR:0,GRASS:1,DIRT:2,STONE:3,LOG:4,LEAVES:5,SAND:6,WATER:7,COAL:8,IRON:9,BEDROCK:10,GRAVEL:11,PLANKS:12,GLASS:13 };
+  const B = {AIR:0,GRASS:1,DIRT:2,STONE:3,LOG:4,LEAVES:5,SAND:6,WATER:7,COAL:8,IRON:9,BEDROCK:10,GRAVEL:11,PLANKS:12,GLASS:13};
 
-  // [name, hardness(ticks@60fps), dropId, baseColor, topColor, veinColor]
+  // Block data: [name, hardness, dropId, sideRGB, topRGB, bottomRGB]
+  // RGB as [r,g,b] arrays for fast pixel math
   const BD = [
-    ['Air',      0,         B.AIR,    null,      null,      null],
-    ['Grass',    15,        B.DIRT,   '#7B4F2E', '#5A9E1C', null],
-    ['Dirt',     12,        B.DIRT,   '#7B4F2E', null,      null],
-    ['Stone',    40,        B.STONE,  '#787878', null,      null],
-    ['Log',      20,        B.PLANKS, '#634B1F', '#9C7A3C', null],
-    ['Leaves',   5,         B.AIR,    '#3A7D3A', null,      null],
-    ['Sand',     12,        B.SAND,   '#D4C472', null,      null],
-    ['Water',    Infinity,  B.AIR,    '#1E64DC', null,      null],
-    ['Coal Ore', 45,        B.COAL,   '#787878', null,      '#111111'],
-    ['Iron Ore', 50,        B.IRON,   '#787878', null,      '#C8956C'],
-    ['Bedrock',  Infinity,  B.AIR,    '#252525', null,      null],
-    ['Gravel',   15,        B.GRAVEL, '#7A7A78', null,      null],
-    ['Planks',   18,        B.PLANKS, '#B88C3A', null,      null],
-    ['Glass',    12,        B.GLASS,  'rgba(180,220,255,0.35)', null, null],
+    ['Air',      0,        B.AIR,   null,           null,           null          ],
+    ['Grass',    15,       B.DIRT,  [120,85,50],    [90,160,40],    [120,85,50]   ],
+    ['Dirt',     12,       B.DIRT,  [121,85,58],    [121,85,58],    [121,85,58]   ],
+    ['Stone',    40,       B.STONE, [128,128,128],  [128,128,128],  [128,128,128] ],
+    ['Log',      20,       B.PLANKS,[100,76,40],    [156,124,65],   [156,124,65]  ],
+    ['Leaves',   5,        B.AIR,   [58,122,58],    [58,122,58],    [58,122,58]   ],
+    ['Sand',     12,       B.SAND,  [212,196,114],  [212,196,114],  [212,196,114] ],
+    ['Water',    Infinity, B.AIR,   [30,100,220],   [30,100,220],   [30,100,220]  ],
+    ['Coal Ore', 45,       B.COAL,  [128,128,128],  [128,128,128],  [128,128,128] ],
+    ['Iron Ore', 50,       B.IRON,  [128,128,128],  [128,128,128],  [128,128,128] ],
+    ['Bedrock',  Infinity, B.AIR,   [37,37,37],     [37,37,37],     [37,37,37]    ],
+    ['Gravel',   15,       B.GRAVEL,[122,122,120],  [122,122,120],  [122,122,120] ],
+    ['Planks',   18,       B.PLANKS,[185,142,64],   [185,142,64],   [185,142,64]  ],
+    ['Glass',    12,       B.GLASS, [180,220,255],  [180,220,255],  [180,220,255] ],
   ];
 
-  const bName  = i => BD[i][0];
-  const bHard  = i => BD[i][1];
-  const bDrop  = i => BD[i][2];
-  const bColor = i => BD[i][3];
-  const bTop   = i => BD[i][4];
-  const bVein  = i => BD[i][5];
+  const bName = i => BD[i][0];
+  const bHard = i => BD[i][1];
+  const bDrop = i => BD[i][2];
+  const bSide = i => BD[i][3];
+  const bTop2 = i => BD[i][4];
+  const bBot  = i => BD[i][5];
+  const bSolid= i => i!==B.AIR && i!==B.WATER && i!==B.LEAVES && i!==B.GLASS;
 
-  // --- World ---
-  let world; // Uint8Array, index = y*WW+x
-  function getB(x,y){ return (x<0||x>=WW||y<0||y>=WH) ? B.STONE : world[y*WW+x]; }
-  function setB(x,y,id){ if(x<0||x>=WW||y<0||y>=WH) return; world[y*WW+x]=id; }
+  // --- 3D World ---
+  let world; // Uint8Array [y*WZ*WX + z*WX + x]
+  function getB(x,y,z){
+    if(x<0||x>=WX||y<0||y>=WY||z<0||z>=WZ) return B.STONE;
+    return world[y*WZ*WX + z*WX + x];
+  }
+  function setB(x,y,z,id){
+    if(x<0||x>=WX||y<0||y>=WY||z<0||z>=WZ) return;
+    world[y*WZ*WX + z*WX + x] = id;
+  }
   function solid(id){ return id!==B.AIR && id!==B.WATER && id!==B.LEAVES && id!==B.GLASS; }
 
-  // --- Player state ---
-  let px,py,pvx,pvy,onGround,hp=20,maxHp=20;
-
-  // --- Camera ---
-  let camX=0,camY=0;
+  // --- Player state (3D first-person) ---
+  // pos: feet position
+  let px=32, py=40, pz=32;    // world position (float)
+  let pvx=0, pvy=0, pvz=0;    // velocity
+  let yaw=0, pitch=0;          // radians; yaw=horizontal, pitch=vertical
+  let onGround=false;
+  let hp=20, maxHp=20;
+  let hunger=20, maxHunger=20;
+  const EYE_H = 1.62;          // eye height above feet
+  const GRAVITY = 22;
+  const JUMP_VEL = 8.5;
+  const WALK_SPEED = 4.3;
+  const SPRINT_SPEED = 6.5;
+  const REACH = 4.5;
+  const PLAYER_W = 0.6;
+  const PLAYER_H = 1.8;
 
   // --- Input ---
-  const keys={};
-  let mx=0,my=0,lmb=false,rmb=false,lastRmb=0;
+  const keys = {};
+  let lmb=false, rmb=false, lastRmb=0;
+  let breakTick=0, breakBx=-1,breakBy=-1,breakBz=-1;
 
-  // --- Breaking ---
-  let brkX=-1,brkY=-1,brkTick=0;
-
-  // --- Inventory ---
+  // --- Hotbar ---
   let hotbar=[
-    {id:B.PLANKS,ct:99},{id:B.DIRT,ct:99},{id:B.STONE,ct:99},
-    {id:B.SAND,ct:99},{id:B.GRAVEL,ct:99},{id:B.GLASS,ct:32},
-    null,null,null
+    {id:B.PLANKS,ct:64},{id:B.DIRT,ct:64},{id:B.STONE,ct:64},
+    {id:B.SAND,ct:64},{id:B.GRAVEL,ct:64},{id:B.GLASS,ct:32},
+    {id:B.LOG,ct:32},{id:B.LEAVES,ct:32},null
   ];
   let slot=0;
 
-  // --- Canvas / ctx ---
-  let canvas,ctx,cw,ch;
+  // --- Canvas / rendering ---
+  let canvas, ctx, cw, ch;
+  let imgData, pxBuf;           // pixel buffer for software raycaster
+  let offCanvas, offCtx;        // offscreen canvas for scaled render
+  const SCALE = 2;              // render at 1/SCALE resolution, scale up
 
   // --- Time ---
-  let dayT=0.35; // fraction 0=midnight 0.5=noon
-  let lastRaf=0,raf=null,gameInited=false;
+  let dayT=0.35;
+  let lastRaf=0, raf=null, gameInited=false;
+  let mcFocused=false;
+  let pointerLocked=false;
 
   // =============== WORLD GENERATION ===============
   function hash(n){ let x=Math.sin(n)*43758.5453123; return x-Math.floor(x); }
-  function noise1(x,s){ return hash(x*127.1+s*311.7); }
-  function smoothNoise(x,s){
-    const ix=Math.floor(x), fx=x-ix;
-    const u=fx*fx*(3-2*fx);
-    return noise1(ix,s)*(1-u)+noise1(ix+1,s)*u;
+  function noise2(x,z,s){ return hash(x*127.1+z*311.7+s*43.3); }
+  function smoothNoise2(x,z,s){
+    const ix=Math.floor(x), iz=Math.floor(z);
+    const fx=x-ix, fz=z-iz;
+    const ux=fx*fx*(3-2*fx), uz=fz*fz*(3-2*fz);
+    const a=noise2(ix,iz,s), b=noise2(ix+1,iz,s);
+    const c=noise2(ix,iz+1,s), d=noise2(ix+1,iz+1,s);
+    return a*(1-ux)*(1-uz)+b*ux*(1-uz)+c*(1-ux)*uz+d*ux*uz;
   }
-  function fbm(x,s,oct=4){
+  function fbm2(x,z,s,oct=4){
     let v=0,a=1,f=1,m=0;
-    for(let o=0;o<oct;o++){ v+=smoothNoise(x*f,s+o*100)*a; m+=a; a*=0.5; f*=2; }
+    for(let o=0;o<oct;o++){ v+=smoothNoise2(x*f,z*f,s+o*100)*a; m+=a; a*=0.5; f*=2; }
     return v/m;
   }
 
   function generateWorld(){
-    const seed=Math.random()*9999;
-    world=new Uint8Array(WW*WH);
+    const seed=Math.random()*9999|0;
+    world=new Uint8Array(WX*WY*WZ);
 
-    // Heightmap
-    const hmap=new Int32Array(WW);
-    for(let x=0;x<WW;x++){
-      hmap[x]=Math.round(30+fbm(x/50,seed)*14-2);
-    }
-
-    const WATER_Y=40;
-
-    // Fill terrain
-    for(let x=0;x<WW;x++){
-      const surf=hmap[x];
-      for(let y=0;y<WH;y++){
-        if(y<surf){
-          setB(x,y,B.AIR);
-        } else if(y===surf){
-          setB(x,y, surf>=WATER_Y ? B.SAND : B.GRASS);
-        } else if(y<surf+5){
-          setB(x,y,B.DIRT);
-        } else if(y<WH-1){
-          const n=noise1(x*37.1+y*13.7,seed+500);
-          if(n>0.93) setB(x,y,B.COAL);
-          else if(n>0.90) setB(x,y,B.IRON);
-          else if(n>0.88) setB(x,y,B.GRAVEL);
-          else setB(x,y,B.STONE);
-          // Caves
-          const cn=Math.sin(x*0.11+seed)*Math.sin(y*0.17+seed*0.5);
-          if(cn>0.55&&y>surf+4&&y<WH-3) setB(x,y,B.AIR);
-        } else {
-          setB(x,y,B.BEDROCK);
-        }
+    // 2D heightmap for each (x,z) column
+    const hmap = new Int32Array(WX*WZ);
+    const WATER_Y = 28;
+    for(let x=0;x<WX;x++){
+      for(let z=0;z<WZ;z++){
+        hmap[z*WX+x] = Math.round(22 + fbm2(x/24, z/24, seed)*10);
       }
     }
 
-    // Water pools in valleys
-    for(let x=0;x<WW;x++){
-      for(let y=hmap[x]+1;y<=WATER_Y;y++){
-        if(getB(x,y)===B.AIR) setB(x,y,B.WATER);
-      }
-    }
-
-    // Sand beaches near water level
-    for(let x=1;x<WW-1;x++){
-      if(Math.abs(hmap[x]-WATER_Y)<=2){
-        const sy=hmap[x];
-        for(let dy=-1;dy<=2;dy++){
-          if(getB(x,sy+dy)===B.DIRT||getB(x,sy+dy)===B.GRASS) setB(x,sy+dy,B.SAND);
+    // Fill voxels
+    for(let x=0;x<WX;x++){
+      for(let z=0;z<WZ;z++){
+        const surf = hmap[z*WX+x];
+        for(let y=0;y<WY;y++){
+          let id;
+          if(y===WY-1) id=B.BEDROCK;
+          else if(y>surf) id=B.AIR;
+          else if(y===surf){
+            id = (surf<=WATER_Y) ? B.SAND : B.GRASS;
+          } else if(y>surf-4) id=B.DIRT;
+          else {
+            const n = noise2(x*0.37+y*0.13,z*0.29,seed+500);
+            if(n>0.92) id=B.COAL;
+            else if(n>0.89) id=B.IRON;
+            else if(n>0.87) id=B.GRAVEL;
+            else id=B.STONE;
+          }
+          setB(x,y,z,id);
         }
+        // Water in depressions
+        for(let y=surf+1;y<=WATER_Y;y++) setB(x,y,z,B.WATER);
       }
     }
 
     // Trees
-    for(let x=5;x<WW-5;x++){
-      if(hmap[x]<WATER_Y-1 && noise1(x*3.71,seed+77)>0.72){
-        if(getB(x,hmap[x])===B.GRASS) placeTree(x,hmap[x]);
-        x+=4+Math.floor(noise1(x,seed)*5);
+    for(let x=3;x<WX-3;x++){
+      for(let z=3;z<WZ-3;z++){
+        const surf=hmap[z*WX+x];
+        if(surf>WATER_Y && noise2(x*3.7,z*2.9,seed+77)>0.78){
+          placeTree3D(x,surf,z);
+        }
       }
     }
   }
 
-  function placeTree(x,sy){
-    const h=4+Math.floor(noise1(x*7.3,42)*3); // 4-6 tall
-    for(let dy=0;dy<h;dy++) setB(x,sy-dy-1,B.LOG);
-    const top=sy-h;
-    const ldef=[{r:0,dy:0},{r:1,dy:1},{r:2,dy:2},{r:2,dy:3},{r:1,dy:4}];
-    for(const {r,dy} of ldef){
+  function placeTree3D(x,sy,z){
+    const h=4+Math.floor(noise2(x*0.71,z*0.53,42)*3);
+    for(let dy=1;dy<=h;dy++) setB(x,sy-dy,z,B.LOG);
+    const ty=sy-h;
+    for(let dy=-1;dy<=2;dy++){
+      const r=dy<1?2:1;
       for(let dx=-r;dx<=r;dx++){
-        if(getB(x+dx,top+dy)===B.AIR) setB(x+dx,top+dy,B.LEAVES);
+        for(let dz=-r;dz<=r;dz++){
+          if(Math.abs(dx)+Math.abs(dz)<=r+1&&getB(x+dx,ty+dy,z+dz)===B.AIR)
+            setB(x+dx,ty+dy,z+dz,B.LEAVES);
+        }
       }
+    }
+  }
+
+  // =============== 3D RAYCASTING ENGINE ===============
+  // DDA-based voxel raycaster (like early Minecraft, full 3D)
+  function castRay(ox,oy,oz, dx,dy,dz, maxDist){
+    // Returns {bx,by,bz,face,dist} or null
+    // face: 0=+x,1=-x,2=+y,3=-y,4=+z,5=-z
+    let bx=Math.floor(ox), by=Math.floor(oy), bz=Math.floor(oz);
+    const sx=dx>0?1:-1, sy=dy>0?1:-1, sz=dz>0?1:-1;
+    const tdx=Math.abs(dx)<1e-10?Infinity:Math.abs(1/dx);
+    const tdy=Math.abs(dy)<1e-10?Infinity:Math.abs(1/dy);
+    const tdz=Math.abs(dz)<1e-10?Infinity:Math.abs(1/dz);
+    let tx=(dx>0?(bx+1-ox):( ox-bx))*Math.abs(tdx);
+    let ty=(dy>0?(by+1-oy):( oy-by))*Math.abs(tdy);
+    let tz=(dz>0?(bz+1-oz):( oz-bz))*Math.abs(tdz);
+    let face=0, dist=0;
+    for(let i=0;i<80;i++){
+      if(tx<ty&&tx<tz){ bx+=sx; dist=tx; tx+=tdx; face=dx>0?1:0; }
+      else if(ty<tz)   { by+=sy; dist=ty; ty+=tdy; face=dy>0?3:2; }
+      else             { bz+=sz; dist=tz; tz+=tdz; face=dz>0?5:4; }
+      if(dist>maxDist) return null;
+      if(bx<0||bx>=WX||by<0||by>=WY||bz<0||bz>=WZ) continue;
+      const id=getB(bx,by,bz);
+      if(id!==B.AIR&&id!==B.WATER) return {bx,by,bz,face,dist,id};
+    }
+    return null;
+  }
+
+  // Get block face neighbor (for placing)
+  function faceNeighbor(bx,by,bz,face){
+    const off=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+    const [ox,oy,oz]=off[face];
+    return {bx:bx+ox,by:by+oy,bz:bz+oz};
+  }
+
+  // =============== TEXTURE GENERATION ===============
+  // Pre-generate 16x16 pixel textures for each block face type
+  const TEX_SIZE = 16;
+  const textures = {}; // blockId_face -> Uint32Array(16*16)
+
+  function makeTexture(id, face){
+    const key=`${id}_${face}`;
+    if(textures[key]) return textures[key];
+    const t = new Uint32Array(TEX_SIZE*TEX_SIZE);
+    // Get base color
+    let rgb = (face===2||face===3) ? bTop2(id)||bSide(id) : bSide(id);
+    if(!rgb){ textures[key]=t; return t; }
+    const [br,bg,bb]=rgb;
+
+    // Noise hash for this block face
+    function h(x,y){ return ((x*374761393+y*668265263+id*2246822519)>>>0)&255; }
+
+    for(let py2=0;py2<TEX_SIZE;py2++){
+      for(let px2=0;px2<TEX_SIZE;px2++){
+        const n=h(px2,py2);
+        // Vary brightness slightly for texture feel
+        const v=1.0 + (n/255-0.5)*0.18;
+        let r=Math.min(255,Math.max(0,br*v|0));
+        let g=Math.min(255,Math.max(0,bg*v|0));
+        let b=Math.min(255,Math.max(0,bb*v|0));
+
+        // Special texture details
+        if(id===B.GRASS && (face===0||face===1||face===4||face===5)){
+          // side: dirt below, green top strip
+          if(py2<3){ r=Math.min(255,90+((n>>1)&20)); g=Math.min(255,155+((n>>2)&25)); b=Math.min(255,40+((n>>3)&15)); }
+          else { r=Math.min(255,121+(n>>4&20)); g=Math.min(255,85+(n>>3&15)); b=Math.min(255,58+(n>>2&10)); }
+        }
+        if(id===B.GRASS && face===2){
+          // top: grass green with variation
+          r=Math.min(255,70+(n>>2&30)); g=Math.min(255,145+(n>>1&35)); b=Math.min(255,30+(n>>3&20));
+        }
+        if(id===B.LOG){
+          if(face===2||face===3){
+            // top: rings
+            const cx=px2-7.5,cy=py2-7.5;
+            const dist=Math.sqrt(cx*cx+cy*cy);
+            if((dist%3)<1){ r=Math.min(255,r-20); g=Math.min(255,g-15); }
+          } else {
+            // side: vertical grain lines
+            if(px2%4===0){ r=Math.max(0,r-20); g=Math.max(0,g-15); }
+          }
+        }
+        if(id===B.STONE){
+          // cracks
+          if(n<15){ r=90;g=90;b=90; }
+        }
+        if(id===B.COAL){
+          // coal spots
+          if(n<25){ r=20;g=20;b=20; }
+        }
+        if(id===B.IRON){
+          // iron spots
+          if(n<30){ r=190;g=140;b=100; }
+        }
+        if(id===B.SAND){
+          if(n<20){ r=Math.max(0,r-10); g=Math.max(0,g-10); }
+        }
+        if(id===B.PLANKS){
+          // wood grain
+          if(py2%4===0){ r=Math.max(0,r-15); g=Math.max(0,g-12); }
+          if(py2%8===4&&px2>TEX_SIZE/2){ r=Math.max(0,r-10); }
+        }
+        if(id===B.WATER){
+          r=30; g=90+(n>>2&30); b=200+(n>>3&30);
+        }
+        if(id===B.BEDROCK){
+          const m=h(px2^3,py2^5);
+          r=30+(m>>4&15); g=30+(m>>4&15); b=30+(m>>4&15);
+        }
+        if(id===B.LEAVES){
+          r=48+(n>>3&20); g=100+(n>>2&30); b=40+(n>>3&15);
+          if(n>230){ r=0;g=0;b=0; } // transparent gaps
+        }
+        if(id===B.GLASS){
+          // mostly transparent-looking, blue tint with edge lines
+          const edge=(px2===0||px2===TEX_SIZE-1||py2===0||py2===TEX_SIZE-1);
+          r=edge?180:200; g=edge?210:230; b=edge?220:255;
+        }
+
+        // Pack RGBA (little-endian: ABGR)
+        t[py2*TEX_SIZE+px2] = 0xFF000000|(b<<16)|(g<<8)|r;
+      }
+    }
+    textures[key]=t;
+    return t;
+  }
+
+  // Pre-bake all textures
+  function bakeTextures(){
+    for(let id=1;id<BD.length;id++){
+      for(let f=0;f<6;f++) makeTexture(id,f);
     }
   }
 
   // =============== PHYSICS ===============
-  function physStep(dt){ // dt in seconds
-    // Gravity
-    pvy=Math.min(pvy+GRAVITY*dt, 30);
+  function aabbSolid(x,y,z){
+    const id=getB(Math.floor(x),Math.floor(y),Math.floor(z));
+    return bSolid(id);
+  }
 
-    // In water
-    const midBx=Math.floor(px+PW/2);
-    const midBy=Math.floor(py+PH/2);
-    const inWater=getB(midBx,midBy)===B.WATER||getB(midBx,Math.floor(py))===B.WATER;
+  function physStep(dt){
+    pvy -= GRAVITY*dt;
+    if(pvy<-50) pvy=-50;
 
-    // Horizontal input
-    let moveX=0;
-    if(keys['a']||keys['arrowleft']) moveX=-1;
-    if(keys['d']||keys['arrowright']) moveX=1;
+    const inWater = getB(px|0, (py+EYE_H*0.5)|0, pz|0)===B.WATER;
+    if(inWater){ pvy*=0.88; pvx*=0.85; pvz*=0.85; }
 
-    if(inWater){
-      pvy*=0.86;
-      pvx=moveX*WALK_SPEED*0.5;
-      if(keys[' ']||keys['w']||keys['arrowup']) pvy=-3;
-    } else {
-      pvx=moveX*WALK_SPEED;
-      if((keys[' ']||keys['w']||keys['arrowup'])&&onGround){
-        pvy=JUMP_VEL; onGround=false;
-      }
-    }
+    // Directional input
+    const spd = (keys['control']||keys['controlleft']) ? SPRINT_SPEED : WALK_SPEED;
+    const fw = (keys['w']||keys['arrowup']) ? 1 : (keys['s']||keys['arrowdown']) ? -1 : 0;
+    const st = (keys['d']||keys['arrowright']) ? 1 : (keys['a']||keys['arrowleft']) ? -1 : 0;
+    const sinY=Math.sin(yaw), cosY=Math.cos(yaw);
+    // Forward = (sin(yaw), cos(yaw)), Right = (cos(yaw), -sin(yaw))
+    pvx = (sinY*fw + cosY*st) * spd;
+    pvz = (cosY*fw - sinY*st) * spd;
+    if(inWater && (keys[' '])) pvy=3;
+    if(!inWater && keys[' '] && onGround){ pvy=JUMP_VEL; onGround=false; }
 
-    // Move X
-    const prevVy=pvy;
+    // Move and collide
+    const HW=PLAYER_W/2;
+    // X
     px+=pvx*dt;
-    resolveX();
-
-    // Move Y
+    for(let dy2=0;dy2<PLAYER_H;dy2+=0.5){
+      if(aabbSolid(px-HW, py+dy2, pz)||aabbSolid(px+HW, py+dy2, pz)){
+        px-=pvx*dt; pvx=0; break;
+      }
+    }
+    // Z
+    pz+=pvz*dt;
+    for(let dy2=0;dy2<PLAYER_H;dy2+=0.5){
+      if(aabbSolid(px-HW, py+dy2, pz-HW)||aabbSolid(px+HW, py+dy2, pz+HW)){
+        pz-=pvz*dt; pvz=0; break;
+      }
+    }
+    // Y
     py+=pvy*dt;
-    const wasOnGround=onGround;
     onGround=false;
-    resolveY(prevVy);
-
-    // Fall damage
-    if(onGround&&!wasOnGround&&prevVy>12){
-      hp=Math.max(0,hp-Math.floor((prevVy-12)*1.5));
-    }
-
-    // World bounds
-    px=Math.max(0,Math.min(WW-PW,px));
-    if(py<0){py=0;pvy=0;}
-    if(py+PH>WH){py=WH-PH;pvy=0;onGround=true;}
-  }
-
-  function resolveX(){
-    const top=py, bottom=py+PH-0.01;
-    if(pvx>0){
-      const rx=px+PW-0.001;
-      const bx=Math.floor(rx);
-      for(let by=Math.floor(top);by<=Math.floor(bottom);by++){
-        if(solid(getB(bx,by))){ px=bx-PW; pvx=0; break; }
-      }
-    } else if(pvx<0){
-      const lx=px;
-      const bx=Math.floor(lx);
-      for(let by=Math.floor(top);by<=Math.floor(bottom);by++){
-        if(solid(getB(bx,by))){ px=bx+1; pvx=0; break; }
-      }
-    }
-  }
-
-  function resolveY(prevVy){
-    const left=px, right=px+PW-0.01;
-    if(prevVy>=0){
-      const by=Math.floor(py+PH-0.001);
-      for(let bx=Math.floor(left);bx<=Math.floor(right);bx++){
-        if(solid(getB(bx,by))){ py=by-PH; pvy=0; onGround=true; break; }
+    if(pvy<0){
+      if(aabbSolid(px,py,pz)||aabbSolid(px+HW,py,pz)||aabbSolid(px-HW,py,pz)||
+         aabbSolid(px,py,pz+HW)||aabbSolid(px,py,pz-HW)){
+        py-=pvy*dt; pvy=0; onGround=true;
       }
     } else {
-      const by=Math.floor(py);
-      for(let bx=Math.floor(left);bx<=Math.floor(right);bx++){
-        if(solid(getB(bx,by))){ py=by+1; pvy=0; break; }
+      if(aabbSolid(px,py+PLAYER_H,pz)){
+        py-=pvy*dt; pvy=0;
       }
     }
+    // Clamp world
+    px=Math.max(0.5,Math.min(WX-0.5,px));
+    pz=Math.max(0.5,Math.min(WZ-0.5,pz));
+    if(py<0){py=0;pvy=0;}
+    if(py>WY-2){py=WY-2;pvy=0;}
   }
 
   // =============== BLOCK INTERACTION ===============
-  function targetBlock(){
-    const wx=camX+mx/TILE, wy=camY+my/TILE;
-    const bx=Math.floor(wx), by=Math.floor(wy);
-    const pcx=px+PW/2, pcy=py+PH/2;
-    const d=Math.hypot(bx+0.5-pcx,by+0.5-pcy);
-    if(d>REACH||bx<0||bx>=WW||by<0||by>=WH) return null;
-    return {bx,by};
+  function getLookDir(){
+    const cosPitch=Math.cos(pitch);
+    return {
+      dx: Math.sin(yaw)*cosPitch,
+      dy: Math.sin(pitch),
+      dz: Math.cos(yaw)*cosPitch
+    };
+  }
+
+  function targetBlock3D(){
+    const ey=py+EYE_H;
+    const {dx,dy,dz}=getLookDir();
+    return castRay(px,ey,pz, dx,dy,dz, REACH);
   }
 
   function addInv(id,n){
-    for(const s of hotbar){ if(s&&s.id===id&&s.ct<99){ s.ct=Math.min(99,s.ct+n); return; } }
+    for(const s of hotbar){ if(s&&s.id===id&&s.ct<64){ s.ct=Math.min(64,s.ct+n); return; } }
     for(let i=0;i<9;i++){ if(!hotbar[i]){ hotbar[i]={id,ct:n}; return; } }
   }
 
-  function tickBreak(){
-    if(!lmb){ brkX=-1;brkY=-1;brkTick=0; return; }
-    const t=targetBlock();
-    if(!t){ brkX=-1;brkY=-1;brkTick=0; return; }
-    const {bx,by}=t;
-    const id=getB(bx,by);
-    if(id===B.AIR){ brkX=-1;brkY=-1;brkTick=0; return; }
-    if(brkX!==bx||brkY!==by){ brkX=bx;brkY=by;brkTick=0; }
-    brkTick++;
-    const hard=bHard(id);
-    if(!isFinite(hard)) return;
-    if(brkTick>=hard){
-      const drop=bDrop(id);
-      if(drop!==B.AIR) addInv(drop,1);
-      setB(bx,by,B.AIR);
-      brkX=-1;brkY=-1;brkTick=0;
+  function doBreak(){
+    const t=targetBlock3D(); if(!t) return;
+    const id=getB(t.bx,t.by,t.bz);
+    if(id===B.AIR||!isFinite(bHard(id))) return;
+    if(t.bx===breakBx&&t.by===breakBy&&t.bz===breakBz){
+      breakTick++;
+      if(breakTick>=bHard(id)){
+        const drop=bDrop(id);
+        if(drop!==B.AIR) addInv(drop,1);
+        setB(t.bx,t.by,t.bz,B.AIR);
+        breakBx=-1; breakTick=0;
+      }
+    } else {
+      breakBx=t.bx; breakBy=t.by; breakBz=t.bz; breakTick=0;
     }
   }
 
   function doPlace(){
     const now=performance.now();
-    if(now-lastRmb<200) return;
-    const t=targetBlock(); if(!t) return;
-    const {bx,by}=t;
-    const existing=getB(bx,by);
+    if(now-lastRmb<250) return;
+    const t=targetBlock3D(); if(!t) return;
+    const n=faceNeighbor(t.bx,t.by,t.bz,t.face);
+    const existing=getB(n.bx,n.by,n.bz);
     if(existing!==B.AIR&&existing!==B.WATER) return;
     const item=hotbar[slot];
     if(!item||item.ct<=0) return;
-    // Don't place inside player
-    if(bx>=Math.floor(px)&&bx<=Math.floor(px+PW)&&by>=Math.floor(py)&&by<=Math.floor(py+PH)) return;
-    setB(bx,by,item.id);
+    // Don't place inside player AABB
+    const HW=PLAYER_W/2;
+    if(n.bx>=Math.floor(px-HW)&&n.bx<=Math.floor(px+HW)&&
+       n.by>=Math.floor(py)&&n.by<=Math.floor(py+PLAYER_H)&&
+       n.bz>=Math.floor(pz-HW)&&n.bz<=Math.floor(pz+HW)) return;
+    setB(n.bx,n.by,n.bz,item.id);
     item.ct--;
     if(item.ct<=0) hotbar[slot]=null;
     lastRmb=now;
   }
 
-  // =============== SKY / LIGHTING ===============
+  // =============== SKY ===============
   function lerp(a,b,t){ return a+(b-a)*t; }
-  function lerpHex(a,b,t){
-    const p=n=>parseInt(n,16);
-    const r=Math.round(lerp(p(a.slice(1,3)),p(b.slice(1,3)),t));
-    const g=Math.round(lerp(p(a.slice(3,5)),p(b.slice(3,5)),t));
-    const bl=Math.round(lerp(p(a.slice(5,7)),p(b.slice(5,7)),t));
-    return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${bl.toString(16).padStart(2,'0')}`;
-  }
-  function skyColor(){
+  function skyRGB(){
     const t=dayT;
-    if(t<0.2||t>0.85) return '#080818';
-    if(t<0.28) return lerpHex('#080818','#FF6633',(t-0.2)/0.08);
-    if(t<0.36) return lerpHex('#FF6633','#87CEEB',(t-0.28)/0.08);
-    if(t<0.64) return '#87CEEB';
-    if(t<0.72) return lerpHex('#87CEEB','#FF6633',(t-0.64)/0.08);
-    if(t<0.80) return lerpHex('#FF6633','#080818',(t-0.72)/0.08);
-    return '#080818';
+    if(t<0.22||t>0.84) return [10,10,30];
+    if(t<0.30) return [lerp(10,255,( t-0.22)/0.08)|0, lerp(10,100,(t-0.22)/0.08)|0, lerp(30,50,(t-0.22)/0.08)|0];
+    if(t<0.38) return [lerp(255,135,(t-0.30)/0.08)|0, lerp(100,200,(t-0.30)/0.08)|0, lerp(50,235,(t-0.30)/0.08)|0];
+    if(t<0.62) return [135,206,235];
+    if(t<0.70) return [lerp(135,255,(t-0.62)/0.08)|0, lerp(206,100,(t-0.62)/0.08)|0, lerp(235,50,(t-0.62)/0.08)|0];
+    if(t<0.78) return [lerp(255,10,(t-0.70)/0.08)|0, lerp(100,10,(t-0.70)/0.08)|0, lerp(50,30,(t-0.70)/0.08)|0];
+    return [10,10,30];
   }
   function lightLevel(){
     const t=dayT;
-    if(t<0.22||t>0.83) return 0.25;
-    if(t<0.35) return 0.25+0.75*(t-0.22)/0.13;
-    if(t<0.65) return 1.0;
-    if(t<0.78) return 0.25+0.75*(0.83-t)/0.13;
-    return 0.25;
+    if(t<0.22||t>0.84) return 0.2;
+    if(t<0.36) return lerp(0.2,1.0,(t-0.22)/0.14);
+    if(t<0.64) return 1.0;
+    if(t<0.78) return lerp(1.0,0.2,(t-0.64)/0.14);
+    return 0.2;
   }
 
-  // =============== RENDERING ===============
-  function drawBlock(bx,by){
-    const id=getB(bx,by);
-    if(id===B.AIR) return;
-    const bc=bColor(id); if(!bc) return;
+  // =============== FIRST-PERSON RENDERER ===============
+  function render(){
+    if(!ctx) return;
 
-    const sx=Math.round((bx-camX)*TILE);
-    const sy=Math.round((by-camY)*TILE);
-    if(sx>cw+TILE||sy>ch+TILE||sx<-TILE||sy<-TILE) return;
-
-    const S=TILE;
-
-    // Water: animated transparent
-    if(id===B.WATER){
-      ctx.globalAlpha=0.65;
-      ctx.fillStyle='#1E64DC';
-      ctx.fillRect(sx,sy,S,S);
-      ctx.globalAlpha=0.3;
-      ctx.fillStyle='#5BA0FF';
-      const wv=Math.floor(((Date.now()/500+bx*0.4)%1)*6);
-      ctx.fillRect(sx,sy+wv,S,2);
-      ctx.globalAlpha=1;
-      ctx.strokeStyle='rgba(0,50,150,0.4)';
-      ctx.lineWidth=0.5;
-      ctx.strokeRect(sx+0.5,sy+0.5,S-1,S-1);
-      return;
+    // Resize pixel buffer if needed
+    const rw=Math.ceil(cw/SCALE), rh=Math.ceil(ch/SCALE);
+    if(!offCanvas||offCanvas.width!==rw||offCanvas.height!==rh){
+      offCanvas=document.createElement('canvas');
+      offCanvas.width=rw; offCanvas.height=rh;
+      offCtx=offCanvas.getContext('2d');
+      imgData=offCtx.createImageData(rw,rh);
+      pxBuf=new Uint32Array(imgData.data.buffer);
     }
 
-    // Leaves: slight transparency
-    if(id===B.LEAVES) ctx.globalAlpha=0.88;
-    if(id===B.GLASS) ctx.globalAlpha=0.5;
+    const [sr,sg,sb]=skyRGB();
+    const sky32=0xFF000000|(sb<<16)|(sg<<8)|sr;
+    const ll=lightLevel();
+    const ey=py+EYE_H;
+    const cosPitch=Math.cos(pitch), sinPitch=Math.sin(pitch);
+    const sinYaw=Math.sin(yaw),   cosYaw=Math.cos(yaw);
+    const fovH = 1.1; // ~63 deg half-fov horizontal
 
-    ctx.fillStyle=bc;
-    ctx.fillRect(sx,sy,S,S);
+    // Ray march each column (and row for pitch)
+    for(let sx2=0;sx2<rw;sx2++){
+      const camX2=(sx2/rw)*2-1;
+      // Horizontal angle
+      const rayYaw=yaw + Math.atan(camX2*Math.tan(fovH));
+      const rayDX=Math.sin(rayYaw), rayDZ=Math.cos(rayYaw);
 
-    // Grass top strip
-    if(id===B.GRASS){
-      const tc=bTop(id)||bc;
-      ctx.fillStyle=tc;
-      ctx.fillRect(sx,sy,S,Math.max(5,Math.floor(S*0.22)));
-      // Blade tufts
-      ctx.fillStyle='#3E7A0A';
-      ctx.fillRect(sx+3,sy,2,4);
-      ctx.fillRect(sx+S-6,sy,2,4);
-      ctx.fillRect(sx+Math.floor(S/2)-1,sy,2,3);
-    }
+      for(let sy2=0;sy2<rh;sy2++){
+        const camY2=1-(sy2/rh)*2;
+        // Vertical angle
+        const rayPitch=pitch + Math.atan(camY2*Math.tan(fovH*(rh/rw)));
+        const cosRP=Math.cos(rayPitch), sinRP=Math.sin(rayPitch);
+        const dx=rayDX*cosRP, dy=sinRP, dz=rayDZ*cosRP;
 
-    // Log top ring
-    if(id===B.LOG){
-      const tc=bTop(id);
-      if(tc){
-        ctx.fillStyle=tc;
-        const r=Math.floor(S*0.25);
-        ctx.fillRect(sx+r,sy+r,S-r*2,S-r*2);
+        const hit=castRay(px,ey,pz, dx,dy,dz, 64);
+        let col32;
+        if(!hit){
+          // Sky or floor color
+          if(dy<-0.01){
+            // Ground fog color
+            col32=0xFF000000|(0x40<<16)|(0x40<<8)|0x40;
+          } else {
+            col32=sky32;
+          }
+        } else {
+          const {bx,by,bz,face,dist,id}=hit;
+          // Sample texture
+          const tex=makeTexture(id,face);
+          // UV mapping per face
+          let u,v;
+          const hitX=px+dx*dist, hitY=ey+dy*dist, hitZ=pz+dz*dist;
+          if(face===0||face===1){ u=(hitZ-Math.floor(hitZ)); v=1-(hitY-Math.floor(hitY)); }
+          else if(face===2||face===3){ u=(hitX-Math.floor(hitX)); v=(hitZ-Math.floor(hitZ)); }
+          else { u=(hitX-Math.floor(hitX)); v=1-(hitY-Math.floor(hitY)); }
+          if(face===1||face===5) u=1-u;
+          const tu=(u*(TEX_SIZE-1))|0, tv=(v*(TEX_SIZE-1))|0;
+          let t32=tex[tv*TEX_SIZE+tu]||0xFF808080;
+
+          // Distance fog + lighting
+          const fog=Math.max(0,1-dist/40);
+          const shade=ll * (0.6 + fog*0.4);
+          // Face shading (like MC: top=full, sides=0.8, bottom=0.5)
+          const faceSh=(face===2)?1.0:(face===3)?0.5:(face===0||face===1)?0.75:0.85;
+          const totalSh=Math.min(1,shade*faceSh);
+
+          let tr=(t32)&0xFF, tg=(t32>>8)&0xFF, tb2=(t32>>16)&0xFF;
+          const fogR=sr, fogG=sg, fogB=sb;
+          tr=lerp(fogR,tr*totalSh,fog)|0;
+          tg=lerp(fogG,tg*totalSh,fog)|0;
+          tb2=lerp(fogB,tb2*totalSh,fog)|0;
+          // Breaking crack overlay
+          if(breakBx===bx&&breakBy===by&&breakBz===bz&&breakTick>0){
+            const prog=breakTick/bHard(id);
+            const dark=prog*120|0;
+            tr=Math.max(0,tr-dark); tg=Math.max(0,tg-dark); tb2=Math.max(0,tb2-dark);
+          }
+          col32=0xFF000000|(Math.min(255,tb2)<<16)|(Math.min(255,tg)<<8)|Math.min(255,tr);
+        }
+        pxBuf[sy2*rw+sx2]=col32;
       }
     }
 
-    // Ore veins (deterministic pixel pattern)
-    if(bVein(id)){
-      ctx.fillStyle=bVein(id);
-      const pos=[[4,4],[20,6],[6,20],[24,18],[13,12],[17,24],[7,28],[25,5]];
-      for(const[ox,oy] of pos){
-        if(ox+5<=S&&oy+5<=S) ctx.fillRect(sx+ox,sy+oy,4,4);
-      }
-    }
+    // Blit offscreen buffer to main canvas at full size
+    offCtx.putImageData(imgData,0,0);
+    ctx.imageSmoothingEnabled=false;
+    ctx.drawImage(offCanvas,0,0,rw,rh,0,0,cw,ch);
 
-    // Procedural texture noise
-    const ns=bx*1237+by*561;
-    ctx.fillStyle='rgba(0,0,0,0.11)';
-    for(let i=0;i<5;i++){
-      const nx=Math.abs((ns*(i+1)*131)%(S-4));
-      const ny=Math.abs((ns*(i+3)*307)%(S-4));
-      ctx.fillRect(sx+nx,sy+ny,3,3);
-    }
-    ctx.fillStyle='rgba(255,255,255,0.07)';
-    for(let i=0;i<3;i++){
-      const nx=Math.abs((ns*(i+7)*89)%(S-4));
-      const ny=Math.abs((ns*(i+9)*53)%(S-4));
-      ctx.fillRect(sx+nx,sy+ny,2,2);
-    }
+    drawHUD3D();
 
-    // Block edge border
-    ctx.strokeStyle='rgba(0,0,0,0.22)';
-    ctx.lineWidth=0.5;
-    ctx.strokeRect(sx+0.5,sy+0.5,S-1,S-1);
+    // Vignette
+    const vig=ctx.createRadialGradient(cw/2,ch/2,ch*0.3,cw/2,ch/2,ch*0.9);
+    vig.addColorStop(0,'rgba(0,0,0,0)');
+    vig.addColorStop(1,'rgba(0,0,0,0.35)');
+    ctx.fillStyle=vig;
+    ctx.fillRect(0,0,cw,ch);
 
-    ctx.globalAlpha=1;
-  }
-
-  function drawBreaking(){
-    if(brkX<0) return;
-    const id=getB(brkX,brkY);
-    const hard=bHard(id);
-    if(!isFinite(hard)||hard===0) return;
-    const progress=brkTick/hard;
-    const stage=Math.floor(progress*5);
-    const sx=Math.round((brkX-camX)*TILE);
-    const sy=Math.round((brkY-camY)*TILE);
-    const S=TILE;
-
-    ctx.fillStyle=`rgba(0,0,0,${0.1+progress*0.35})`;
-    ctx.fillRect(sx,sy,S,S);
-
-    ctx.strokeStyle=`rgba(0,0,0,${0.4+progress*0.4})`;
-    ctx.lineWidth=1.5;
-    const lines=[
-      [[0.3,0.1],[0.6,0.9]],[[0.1,0.5],[0.9,0.4]],
-      [[0.5,0.2],[0.2,0.8]],[[0.7,0.1],[0.3,0.7]],
-      [[0.1,0.3],[0.8,0.6]],
-    ];
-    for(let i=0;i<stage;i++){
-      const [[x1,y1],[x2,y2]]=lines[i];
-      ctx.beginPath();
-      ctx.moveTo(sx+x1*S,sy+y1*S);
-      ctx.lineTo(sx+x2*S,sy+y2*S);
-      ctx.stroke();
+    if(!mcFocused){
+      ctx.fillStyle='rgba(0,0,0,0.6)';
+      ctx.fillRect(0,0,cw,ch);
+      ctx.fillStyle='#fff';
+      ctx.font='bold 20px "Courier New",monospace';
+      ctx.textAlign='center';
+      ctx.fillText('Click to Play',cw/2,ch/2-12);
+      ctx.font='12px "Courier New",monospace';
+      ctx.fillStyle='#ccc';
+      ctx.fillText('WASD: Move  Mouse: Look  Space: Jump  LClick: Break  RClick: Place',cw/2,ch/2+14);
+      ctx.textAlign='left';
     }
   }
 
-  function drawPlayer(){
-    const sx=(px-camX)*TILE;
-    const sy=(py-camY)*TILE;
-    const pw=PW*TILE, ph=PH*TILE;
+  // =============== HUD ===============
+  function drawHUD3D(){
+    // Crosshair
+    const cx=cw/2, cy=ch/2;
+    ctx.strokeStyle='rgba(255,255,255,0.85)';
+    ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(cx-10,cy); ctx.lineTo(cx+10,cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx,cy-10); ctx.lineTo(cx,cy+10); ctx.stroke();
+    // Dark outline for crosshair
+    ctx.strokeStyle='rgba(0,0,0,0.45)';
+    ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(cx-10,cy); ctx.lineTo(cx+10,cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx,cy-10); ctx.lineTo(cx,cy+10); ctx.stroke();
 
-    // Legs
-    ctx.fillStyle='#2B4C8A';
-    ctx.fillRect(sx+pw*0.1,sy+ph*0.78,pw*0.37,ph*0.22);
-    ctx.fillRect(sx+pw*0.53,sy+ph*0.78,pw*0.37,ph*0.22);
+    // Target block outline (drawn in world = overlay on HUD)
+    const tgt=targetBlock3D();
+    // (outline handled via darkening in raycaster)
 
-    // Body
-    ctx.fillStyle='#4478CC';
-    ctx.fillRect(sx+pw*0.1,sy+ph*0.4,pw*0.8,ph*0.4);
-
-    // Head
-    ctx.fillStyle='#E8C090';
-    ctx.fillRect(sx+pw*0.1,sy,pw*0.8,ph*0.38);
-    // Hair
-    ctx.fillStyle='#5A3A18';
-    ctx.fillRect(sx+pw*0.1,sy,pw*0.8,ph*0.10);
-
-    // Eyes
-    ctx.fillStyle='#1A1A1A';
-    ctx.fillRect(sx+pw*0.25,sy+ph*0.15,pw*0.15,ph*0.09);
-    ctx.fillRect(sx+pw*0.6, sy+ph*0.15,pw*0.15,ph*0.09);
-
-    // Arms
-    ctx.fillStyle='#4478CC';
-    ctx.fillRect(sx-pw*0.12,sy+ph*0.4,pw*0.18,ph*0.36);
-    ctx.fillRect(sx+pw*0.94,sy+ph*0.4,pw*0.18,ph*0.36);
-
-    // Held item in right hand
-    const item=hotbar[slot];
-    if(item&&item.id!==B.AIR){
-      const bc=bColor(item.id);
-      if(bc){
-        const iS=14;
-        ctx.fillStyle=bc;
-        ctx.fillRect(sx+pw*0.94+4,sy+ph*0.54,iS,iS);
-        const top=bTop(item.id);
-        if(top){ ctx.fillStyle=top; ctx.fillRect(sx+pw*0.94+4,sy+ph*0.54,iS,4); }
-        ctx.strokeStyle='rgba(0,0,0,0.3)';
-        ctx.lineWidth=0.5;
-        ctx.strokeRect(sx+pw*0.94+4.5,sy+ph*0.54+0.5,iS-1,iS-1);
-      }
-    }
-  }
-
-  function drawHUD(){
-    const SLOT_S=44, N=9;
-    const hbW=N*SLOT_S+4;
+    // Hotbar (Minecraft-style)
+    const SLOT=40, N=9, GAP=2;
+    const hbW=N*(SLOT+GAP)-GAP;
     const hbX=Math.floor((cw-hbW)/2);
-    const hbY=ch-SLOT_S-8;
+    const hbY=ch-SLOT-10;
 
-    // Hotbar bg
-    ctx.fillStyle='rgba(0,0,0,0.55)';
-    ctx.fillRect(hbX-2,hbY-2,hbW+4,SLOT_S+4);
+    // Hotbar background (dark semi-transparent)
+    ctx.fillStyle='rgba(0,0,0,0.5)';
+    roundRect(ctx, hbX-3,hbY-3,hbW+6,SLOT+6, 3);
+    ctx.fill();
 
     for(let i=0;i<N;i++){
-      const sx=hbX+i*SLOT_S, sy=hbY;
+      const sx=hbX+i*(SLOT+GAP), sy=hbY;
       const sel=i===slot;
-      ctx.fillStyle=sel?'#FFEE00':'#888';
-      ctx.fillRect(sx,sy,SLOT_S-2,SLOT_S-2);
-      ctx.fillStyle=sel?'#B8A800':'#555';
-      ctx.fillRect(sx+2,sy+2,SLOT_S-6,SLOT_S-6);
+      // Slot border
+      ctx.strokeStyle=sel?'#FFFFFF':'rgba(255,255,255,0.3)';
+      ctx.lineWidth=sel?2:1;
+      ctx.strokeStyle=sel?'rgba(255,255,255,0.9)':'rgba(100,100,100,0.6)';
+      ctx.strokeRect(sx+0.5,sy+0.5,SLOT-1,SLOT-1);
+      // Slot inner
+      ctx.fillStyle=sel?'rgba(255,255,255,0.15)':'rgba(0,0,0,0.25)';
+      ctx.fillRect(sx+1,sy+1,SLOT-2,SLOT-2);
 
       const item=hotbar[i];
       if(item&&item.ct>0){
-        const bc=bColor(item.id);
-        if(bc){
-          if(item.id===B.WATER||item.id===B.GLASS) ctx.globalAlpha=0.6;
-          ctx.fillStyle=bc;
-          ctx.fillRect(sx+5,sy+5,SLOT_S-10,SLOT_S-10);
-          ctx.globalAlpha=1;
-          const top=bTop(item.id);
-          if(top){ ctx.fillStyle=top; ctx.fillRect(sx+5,sy+5,SLOT_S-10,5); }
-          const vn=bVein(item.id);
-          if(vn){
-            ctx.fillStyle=vn;
-            ctx.fillRect(sx+9,sy+9,5,5);
-            ctx.fillRect(sx+18,sy+14,5,5);
-            ctx.fillRect(sx+24,sy+9,5,5);
-          }
-          ctx.strokeStyle='rgba(0,0,0,0.35)';
-          ctx.lineWidth=0.5;
-          ctx.strokeRect(sx+5.5,sy+5.5,SLOT_S-11,SLOT_S-11);
-        }
-        ctx.fillStyle='white';
-        ctx.font='bold 9px monospace';
+        drawItemIcon(ctx, item.id, sx+4, sy+4, SLOT-8);
+        // Count
+        ctx.font='bold 9px "Courier New",monospace';
         ctx.textAlign='right';
-        ctx.fillText(item.ct,sx+SLOT_S-4,sy+SLOT_S-4);
+        ctx.fillStyle='white';
+        ctx.shadowColor='#000'; ctx.shadowBlur=2;
+        ctx.fillText(item.ct, sx+SLOT-2, sy+SLOT-3);
+        ctx.shadowBlur=0;
       }
-      // Slot number
-      ctx.fillStyle='rgba(255,255,255,0.5)';
-      ctx.font='8px monospace';
-      ctx.textAlign='left';
-      ctx.fillText(i+1,sx+3,sy+10);
     }
 
-    // Health bar
-    ctx.font='14px serif';
-    ctx.textAlign='left';
-    for(let i=0;i<maxHp/2;i++){
-      const hx=hbX+i*16;
-      const hy=hbY-20;
-      ctx.globalAlpha=0.85;
-      ctx.fillText(i<hp/2?'❤':'♡',hx,hy);
+    // Health bar (hearts above hotbar left)
+    const heartX=hbX;
+    const heartY=hbY-22;
+    for(let i=0;i<10;i++){
+      const hx=heartX+i*18, hy=heartY;
+      const filled=(i<hp/2);
+      const half=(i===(Math.ceil(hp/2)-1) && hp%2===1);
+      ctx.font='14px serif';
+      ctx.fillStyle=filled?'#FF3333':'rgba(255,50,50,0.3)';
+      ctx.shadowColor='#000'; ctx.shadowBlur=2;
+      ctx.fillText('❤',hx,hy);
+      ctx.shadowBlur=0;
     }
-    ctx.globalAlpha=1;
 
-    // Block name tooltip on hover
-    const t=targetBlock();
-    if(t){
-      const id=getB(t.bx,t.by);
-      if(id!==B.AIR){
-        const nm=bName(id);
-        ctx.font='11px "Pixelated MS Sans Serif",monospace';
-        const tw=ctx.measureText(nm).width;
-        ctx.fillStyle='rgba(0,0,0,0.65)';
-        ctx.fillRect(mx-tw/2-6,my-28,tw+12,18);
-        ctx.fillStyle='#FFFF55';
-        ctx.textAlign='center';
-        ctx.fillText(nm,mx,my-15);
-      }
+    // Hunger bar (above hotbar right)
+    const hunX=hbX+hbW;
+    const hunY=hbY-22;
+    for(let i=9;i>=0;i--){
+      const hx=hunX-(9-i)*18-14, hy=hunY;
+      const filled=(i<hunger/2);
+      ctx.font='14px serif';
+      ctx.fillStyle=filled?'#CC8800':'rgba(180,100,0,0.3)';
+      ctx.shadowColor='#000'; ctx.shadowBlur=2;
+      ctx.fillText('🍗',hx,hy);
+      ctx.shadowBlur=0;
     }
 
     // Selected item name
     const cur=hotbar[slot];
     if(cur&&cur.ct>0){
       const nm=bName(cur.id);
-      ctx.font='12px "Pixelated MS Sans Serif",monospace';
-      const tw=ctx.measureText(nm).width;
-      ctx.fillStyle='rgba(0,0,0,0.6)';
-      ctx.fillRect(cw/2-tw/2-6,hbY-24,tw+12,18);
-      ctx.fillStyle='#FFFF55';
+      ctx.font='bold 13px "Courier New",monospace';
       ctx.textAlign='center';
-      ctx.fillText(nm,cw/2,hbY-10);
+      const tw=ctx.measureText(nm).width;
+      ctx.fillStyle='rgba(0,0,0,0.55)';
+      ctx.fillRect(cw/2-tw/2-6,hbY-42,tw+12,18);
+      ctx.fillStyle='#FFFF55';
+      ctx.shadowColor='#000'; ctx.shadowBlur=3;
+      ctx.fillText(nm,cw/2,hbY-28);
+      ctx.shadowBlur=0;
     }
+    ctx.textAlign='left';
+
+    // Right hand / held item (bottom-right corner)
+    const item=hotbar[slot];
+    if(item&&item.ct>0){
+      ctx.save();
+      ctx.translate(cw-60, ch-30);
+      ctx.rotate(-0.3);
+      drawItemIcon(ctx, item.id, -20, -40, 52);
+      // Arm stub
+      ctx.fillStyle='#4478CC';
+      ctx.fillRect(-12, 0, 28, 40);
+      // Hand
+      ctx.fillStyle='#E8C090';
+      ctx.fillRect(-10, -8, 26, 14);
+      ctx.restore();
+    }
+
+    // Day/night indicator (tiny)
+    ctx.font='9px monospace';
+    ctx.fillStyle='rgba(255,255,255,0.5)';
+    ctx.textAlign='left';
+    const timeStr = dayT<0.25||dayT>0.83 ? '🌙 Night' : dayT<0.38||dayT>0.62 ? '🌅 Dusk/Dawn' : '☀ Day';
+    ctx.fillText(timeStr, 6, 16);
 
     ctx.textAlign='left';
   }
 
-  function drawSky(){
-    // Sky gradient
-    const sky=skyColor();
-    ctx.fillStyle=sky;
-    ctx.fillRect(0,0,cw,ch);
-
-    const t=dayT;
-    // Sun
-    if(t>0.28&&t<0.78){
-      const sunProg=(t-0.28)/0.5;
-      const sx=cw*(0.1+sunProg*0.8);
-      const sy=ch*0.55-Math.sin(sunProg*Math.PI)*ch*0.5;
-      ctx.fillStyle='#FFD700';
-      ctx.beginPath(); ctx.arc(sx,sy,18,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='#FFE84D';
-      ctx.beginPath(); ctx.arc(sx,sy,12,0,Math.PI*2); ctx.fill();
-      // Rays
-      ctx.strokeStyle='rgba(255,220,0,0.3)';
-      ctx.lineWidth=2;
-      for(let a=0;a<8;a++){
-        const ang=a*(Math.PI/4);
-        ctx.beginPath();
-        ctx.moveTo(sx+Math.cos(ang)*20,sy+Math.sin(ang)*20);
-        ctx.lineTo(sx+Math.cos(ang)*30,sy+Math.sin(ang)*30);
-        ctx.stroke();
-      }
-    }
-
-    // Moon (night)
-    if(t<0.25||t>0.82){
-      const mp=t>0.5?(t-0.82)/0.18+1:(t)/0.25;
-      const moonX=cw*(0.15+mp*0.7);
-      const moonY=ch*0.4-Math.sin(mp*Math.PI)*ch*0.3;
-      ctx.fillStyle='#E0E8FF';
-      ctx.beginPath(); ctx.arc(moonX,moonY,13,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='#B8C8EE';
-      ctx.beginPath(); ctx.arc(moonX+4,moonY-3,9,0,Math.PI*2); ctx.fill();
-
-      // Stars
-      if(t<0.22||t>0.84){
-        ctx.fillStyle='rgba(255,255,255,0.85)';
-        for(let i=0;i<100;i++){
-          const sx=((i*1234+567)%cw)|0;
-          const sy=((i*911+233)%(ch*0.55))|0;
-          const ss=(i%3===0)?2:1;
-          ctx.fillRect(sx,sy,ss,ss);
-        }
-      }
-    }
+  function roundRect(ctx2,x,y,w,h,r){
+    ctx2.beginPath();
+    ctx2.moveTo(x+r,y);
+    ctx2.lineTo(x+w-r,y); ctx2.quadraticCurveTo(x+w,y,x+w,y+r);
+    ctx2.lineTo(x+w,y+h-r); ctx2.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    ctx2.lineTo(x+r,y+h); ctx2.quadraticCurveTo(x,y+h,x,y+h-r);
+    ctx2.lineTo(x,y+r); ctx2.quadraticCurveTo(x,y,x+r,y);
+    ctx2.closePath();
   }
 
-  function render(){
-    if(!ctx) return;
-    ctx.imageSmoothingEnabled=false;
-
-    drawSky();
-
-    // Visible block range
-    const x0=Math.max(0,Math.floor(camX)-1);
-    const x1=Math.min(WW-1,Math.ceil(camX+cw/TILE)+1);
-    const y0=Math.max(0,Math.floor(camY)-1);
-    const y1=Math.min(WH-1,Math.ceil(camY+ch/TILE)+1);
-
-    for(let by=y0;by<=y1;by++){
-      for(let bx=x0;bx<=x1;bx++){
-        drawBlock(bx,by);
-      }
-    }
-
-    drawBreaking();
-
-    // Target block outline
-    const t=targetBlock();
-    if(t){
-      const id=getB(t.bx,t.by);
-      if(id!==B.AIR){
-        const sx=Math.round((t.bx-camX)*TILE);
-        const sy=Math.round((t.by-camY)*TILE);
-        ctx.strokeStyle='rgba(0,0,0,0.8)';
-        ctx.lineWidth=2;
-        ctx.strokeRect(sx+1,sy+1,TILE-2,TILE-2);
-      }
-    }
-
-    // Night darkening overlay
-    const ll=lightLevel();
-    if(ll<1){
-      ctx.fillStyle=`rgba(0,0,15,${(1-ll)*0.72})`;
-      ctx.fillRect(0,0,cw,ch);
-    }
-
-    drawPlayer();
-    drawHUD();
-
-    // Focus hint if not focused
-    if(!mcFocused){
-      ctx.fillStyle='rgba(0,0,0,0.55)';
-      ctx.fillRect(0,0,cw,ch);
-      ctx.fillStyle='white';
-      ctx.font='bold 18px "Pixelated MS Sans Serif",monospace';
-      ctx.textAlign='center';
-      ctx.fillText('Click to Play',cw/2,ch/2-10);
-      ctx.font='12px monospace';
-      ctx.fillStyle='#aaa';
-      ctx.fillText('WASD: Move  Space: Jump  LClick: Break  RClick: Place',cw/2,ch/2+14);
-      ctx.textAlign='left';
-    }
+  function drawItemIcon(ctx2, id, x, y, s){
+    // Draw a tiny isometric-ish block icon for hotbar
+    const side=bSide(id), top=bTop2(id)||side;
+    if(!side) return;
+    // Top face
+    ctx2.fillStyle=`rgb(${top[0]},${top[1]},${top[2]})`;
+    ctx2.fillRect(x, y, s, s*0.5);
+    // Left face (slightly darker)
+    const dm=0.75;
+    ctx2.fillStyle=`rgb(${side[0]*dm|0},${side[1]*dm|0},${side[2]*dm|0})`;
+    ctx2.fillRect(x, y+s*0.5, s*0.5, s*0.5);
+    // Right face
+    const dm2=0.85;
+    ctx2.fillStyle=`rgb(${side[0]*dm2|0},${side[1]*dm2|0},${side[2]*dm2|0})`;
+    ctx2.fillRect(x+s*0.5, y+s*0.5, s*0.5, s*0.5);
+    ctx2.strokeStyle='rgba(0,0,0,0.3)'; ctx2.lineWidth=0.5;
+    ctx2.strokeRect(x+0.5,y+0.5,s-1,s-1);
   }
 
   // =============== GAME LOOP ===============
-  let mcFocused=false;
+  const DAY_DURATION = 600; // seconds per full day cycle
 
   function frame(now){
     raf=requestAnimationFrame(frame);
     const dt=Math.min((now-lastRaf)/1000, 0.05);
     lastRaf=now;
 
-    // Check window visible
     const win=document.getElementById('minecraft');
-    if(!win||!win.classList.contains('show')||win.style.display==='none'){
-      render(); return;
-    }
+    if(!win||!win.classList.contains('show')){ render(); return; }
 
-    dayT=(dayT+dt/DAY_MS*1000)%1;
+    dayT=(dayT+dt/DAY_DURATION)%1;
 
     if(mcFocused){
-      tickBreak();
-      if(rmb) doPlace();
-      // Sub-steps for stability
+      if(lmb) doBreak(); else { breakBx=-1; breakTick=0; }
       const steps=3;
       for(let s=0;s<steps;s++) physStep(dt/steps);
     }
-
-    // Camera: center on player
-    camX=px+PW/2-cw/TILE/2;
-    camY=py+PH/2-ch/TILE/2;
-    camX=Math.max(0,Math.min(WW-cw/TILE,camX));
-    camY=Math.max(0,Math.min(WH-ch/TILE,camY));
 
     render();
   }
@@ -1726,25 +1726,42 @@ function ipodRewind() {
       ch=canvas.clientHeight||480;
       canvas.width=cw;
       canvas.height=ch;
+      offCanvas=null; imgData=null; // force rebuffer on next render
     }
     resize();
     new ResizeObserver(resize).observe(canvas);
 
     generateWorld();
+    bakeTextures();
 
-    // Spawn player on surface center
-    const midX=Math.floor(WW/2);
-    for(let y=0;y<WH;y++){
-      if(solid(getB(midX,y))){
-        px=midX-PW/2; py=y-PH-0.01; break;
+    // Spawn player on surface
+    const spawnX=Math.floor(WX/2), spawnZ=Math.floor(WZ/2);
+    for(let y=0;y<WY;y++){
+      if(bSolid(getB(spawnX,y,spawnZ))){
+        px=spawnX+0.5; py=y-PLAYER_H-0.01; pz=spawnZ+0.5; break;
       }
     }
-    pvx=0; pvy=0; onGround=false;
+    pvx=0; pvy=0; pvz=0; onGround=false;
+    yaw=0.3; pitch=-0.1;
 
-    // Input
+    // Pointer lock for mouse look
+    canvas.addEventListener('click',()=>{
+      canvas.requestPointerLock && canvas.requestPointerLock();
+    });
+    document.addEventListener('pointerlockchange',()=>{
+      pointerLocked=(document.pointerLockElement===canvas);
+      mcFocused=pointerLocked;
+      if(!pointerLocked){ Object.keys(keys).forEach(k=>keys[k]=false); lmb=false; rmb=false; }
+    });
+    canvas.addEventListener('mousemove',e=>{
+      if(!pointerLocked) return;
+      yaw   += e.movementX * 0.002;
+      pitch -= e.movementY * 0.002;
+      pitch=Math.max(-Math.PI*0.49,Math.min(Math.PI*0.49,pitch));
+    });
     canvas.addEventListener('mousedown',e=>{
-      canvas.focus(); mcFocused=true;
-      if(e.button===0) lmb=true;
+      if(!pointerLocked){ canvas.requestPointerLock && canvas.requestPointerLock(); return; }
+      if(e.button===0){ lmb=true; }
       if(e.button===2){ rmb=true; doPlace(); }
       e.preventDefault();
     });
@@ -1752,27 +1769,20 @@ function ipodRewind() {
       if(e.button===0) lmb=false;
       if(e.button===2) rmb=false;
     });
-    canvas.addEventListener('mousemove',e=>{
-      const r=canvas.getBoundingClientRect();
-      mx=e.clientX-r.left; my=e.clientY-r.top;
-    });
-    canvas.addEventListener('mouseleave',()=>{ lmb=false; rmb=false; });
     canvas.addEventListener('contextmenu',e=>e.preventDefault());
     canvas.addEventListener('wheel',e=>{
       slot=((slot+(e.deltaY>0?1:-1))+9)%9;
       e.preventDefault();
     },{passive:false});
-    canvas.addEventListener('keydown',e=>{
+    document.addEventListener('keydown',e=>{
+      const win2=document.getElementById('minecraft');
+      if(!win2||!win2.classList.contains('show')) return;
       keys[e.key.toLowerCase()]=true;
       if(e.key>='1'&&e.key<='9') slot=parseInt(e.key)-1;
-      e.preventDefault(); e.stopPropagation();
+      if(pointerLocked){ e.preventDefault(); e.stopPropagation(); }
     });
-    canvas.addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
-    canvas.addEventListener('focus',()=>{ mcFocused=true; });
-    canvas.addEventListener('blur',()=>{
-      mcFocused=false;
-      Object.keys(keys).forEach(k=>{ keys[k]=false; });
-      lmb=false; rmb=false;
+    document.addEventListener('keyup',e=>{
+      keys[e.key.toLowerCase()]=false;
     });
 
     lastRaf=performance.now();
