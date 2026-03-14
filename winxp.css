@@ -39,6 +39,52 @@ html, body {
   cursor: default;
 }
 
+/* ================================================================
+   CRT / OLD LCD SCREEN TEXTURE OVERLAY
+   Sits on top of everything — pointer-events:none so it's purely visual.
+   Simulates the look of Windows XP on an early 2000s CRT/LCD monitor.
+   ================================================================ */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  pointer-events: none;
+
+  background-image:
+    /* 1. RGB subpixel dot grid — tiny 3px wide columns of R/G/B tint */
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 30,  30,  0.025) 0px,
+      rgba(255, 30,  30,  0.025) 1px,
+      rgba(30,  255, 30,  0.025) 1px,
+      rgba(30,  255, 30,  0.025) 2px,
+      rgba(30,  30,  255, 0.025) 2px,
+      rgba(30,  30,  255, 0.025) 3px
+    ),
+    /* 2. Horizontal scanlines — one dark line every 2px like a CRT */
+    repeating-linear-gradient(
+      180deg,
+      transparent         0px,
+      transparent         1px,
+      rgba(0, 0, 0, 0.07) 1px,
+      rgba(0, 0, 0, 0.07) 2px
+    ),
+    /* 3. Screen vignette — edges darker like a curved CRT tube */
+    radial-gradient(
+      ellipse 110% 105% at 50% 50%,
+      transparent 55%,
+      rgba(0, 0, 0, 0.28) 100%
+    );
+
+  /* Make the pixel grid crisp — no blurring */
+  image-rendering: pixelated;
+
+  /* Very slight overall screen-glow warmth */
+  mix-blend-mode: multiply;
+  opacity: 0.85;
+}
+
 /* Pixelated font for interactive controls, matching XP reference */
 button, input, textarea, select, label {
   font-family: var(--font-pixel);
@@ -57,16 +103,18 @@ button, input, textarea, select, label {
   background: linear-gradient(to bottom, #2c61c6 0%, #3d6fc4 55%, #2c61c6 100%);
 }
 
-/* subtle XP-ish texture */
+/* subtle XP dot/noise texture on login (complements global CRT overlay) */
 #login-screen::before{
   content:"";
   position:absolute;
   inset:0;
   pointer-events:none;
-  opacity:.18;
+  z-index:0;
+  opacity:.12;
   background:
-    radial-gradient(circle at 50% 45%, rgba(255,255,255,.22), transparent 55%),
-    repeating-linear-gradient(90deg, rgba(255,255,255,.06), rgba(255,255,255,.06) 1px, transparent 1px, transparent 7px);
+    radial-gradient(circle at 50% 45%, rgba(255,255,255,.18), transparent 55%),
+    /* fine dot matrix — like early LCD subpixel rendering */
+    radial-gradient(circle, rgba(255,255,255,0.35) 1px, transparent 1px) 0 0 / 3px 3px;
 }
 
 /* Top bar (more like the first: less “busy”) */
