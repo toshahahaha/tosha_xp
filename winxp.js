@@ -1449,60 +1449,94 @@ function ipodRewind() {
     const sky32=0xFF000000|(sb<<16)|(sg<<8)|sr;
     const ll=lightLevel();
     const ey=py+EYE_H;
-    const cosPitch=Math.cos(pitch), sinPitch=Math.sin(pitch);
-    const sinYaw=Math.sin(yaw),   cosYaw=Math.cos(yaw);
-    const fovH = 1.1; // ~63 deg half-fov horizontal
+
+    // Minecraft-like FOV: 70° total horizontal = 35° half-angle
+    // Use a proper perspective projection with a plane-based approach
+    // planeDist = 1 / tan(fovH/2)  where fovH = 70deg = 1.2217 rad
+    const FOV_H = 1.2217; // 70 degrees total horizontal FOV
+    const halfTanH = Math.tan(FOV_H * 0.5); // tan(35°) ≈ 0.700
+    const halfTanV = halfTanH * (rh / rw);  // maintain aspect ratio
+
+    const sinYaw=Math.sin(yaw), cosYaw=Math.cos(yaw);
+    const sinPitch=Math.sin(pitch), cosPitch=Math.cos(pitch);
+
+    // Forward vector (look direction)
+    const fwdX = sinYaw * cosPitch;
+    const fwdY = sinPitch;
+    const fwdZ = cosYaw * cosPitch;
+    // Right vector (perpendicular horizontal)
+    const rgtX = cosYaw;
+    const rgtY = 0;
+    const rgtZ = -sinYaw;
+    // Up vector (perpendicular vertical, accounts for pitch)
+    const upX = -sinYaw * sinPitch;
+    const upY = cosPitch;
+    const upZ = -cosYaw * sinPitch;
 
     // Ray march each column (and row for pitch)
     for(let sx2=0;sx2<rw;sx2++){
-      const camX2=(sx2/rw)*2-1;
-      // Horizontal angle
-      const rayYaw=yaw + Math.atan(camX2*Math.tan(fovH));
-      const rayDX=Math.sin(rayYaw), rayDZ=Math.cos(rayYaw);
+      const camX2 = (sx2 / rw) * 2.0 - 1.0; // -1 to +1
 
       for(let sy2=0;sy2<rh;sy2++){
-        const camY2=1-(sy2/rh)*2;
-        // Vertical angle
-        const rayPitch=pitch + Math.atan(camY2*Math.tan(fovH*(rh/rw)));
-        const cosRP=Math.cos(rayPitch), sinRP=Math.sin(rayPitch);
-        const dx=rayDX*cosRP, dy=sinRP, dz=rayDZ*cosRP;
+        const camY2 = 1.0 - (sy2 / rh) * 2.0; // +1 top, -1 bottom
 
-        const hit=castRay(px,ey,pz, dx,dy,dz, 64);
+        // Build ray direction using plane projection (no atan distortion)
+        const dx = fwdX + rgtX * camX2 * halfTanH + upX * camY2 * halfTanV;
+        const dy = fwdY + rgtY * camX2 * halfTanH + upY * camY2 * halfTanV;
+        const dz = fwdZ + rgtZ * camX2 * halfTanH + upZ * camY2 * halfTanV;
+        // Normalize
+        const invLen = 1.0 / Math.sqrt(dx*dx+dy*dy+dz*dz);
+        const rdx=dx*invLen, rdy=dy*invLen, rdz=dz*invLen;
+
+        const hit=castRay(px,ey,pz, rdx,rdy,rdz, 80);
         let col32;
         if(!hit){
-          // Sky or floor color
-          if(dy<-0.01){
-            // Ground fog color
-            col32=0xFF000000|(0x40<<16)|(0x40<<8)|0x40;
+          // Sky gradient: darker at top, lighter near horizon
+          if(rdy < 0.0){
+            // Below horizon — ground/void color (earthy brown)
+            const t = Math.min(1, -rdy * 4);
+            const gr = lerp(sr, 70, t)|0;
+            const gg = lerp(sg, 55, t)|0;
+            const gb = lerp(sb, 35, t)|0;
+            col32=0xFF000000|(gb<<16)|(gg<<8)|gr;
           } else {
-            col32=sky32;
+            // Sky — slight gradient (lighter near horizon)
+            const t = Math.min(1, rdy * 2);
+            const skR = lerp(sr, Math.max(0,sr-20), t)|0;
+            const skG = lerp(sg, Math.max(0,sg-15), t)|0;
+            const skB = lerp(sb, Math.min(255,sb+10), t)|0;
+            col32=0xFF000000|(skB<<16)|(skG<<8)|skR;
           }
         } else {
           const {bx,by,bz,face,dist,id}=hit;
           // Sample texture
           const tex=makeTexture(id,face);
-          // UV mapping per face
+          // UV mapping per face — use normalized ray at hit point
           let u,v;
-          const hitX=px+dx*dist, hitY=ey+dy*dist, hitZ=pz+dz*dist;
+          const hitX=px+rdx*dist, hitY=ey+rdy*dist, hitZ=pz+rdz*dist;
           if(face===0||face===1){ u=(hitZ-Math.floor(hitZ)); v=1-(hitY-Math.floor(hitY)); }
           else if(face===2||face===3){ u=(hitX-Math.floor(hitX)); v=(hitZ-Math.floor(hitZ)); }
           else { u=(hitX-Math.floor(hitX)); v=1-(hitY-Math.floor(hitY)); }
           if(face===1||face===5) u=1-u;
-          const tu=(u*(TEX_SIZE-1))|0, tv=(v*(TEX_SIZE-1))|0;
-          let t32=tex[tv*TEX_SIZE+tu]||0xFF808080;
+          const tu=Math.min(TEX_SIZE-1,Math.max(0,(u*(TEX_SIZE))|0));
+          const tv2=Math.min(TEX_SIZE-1,Math.max(0,(v*(TEX_SIZE))|0));
+          let t32=tex[tv2*TEX_SIZE+tu]||0xFF808080;
 
-          // Distance fog + lighting
-          const fog=Math.max(0,1-dist/40);
-          const shade=ll * (0.6 + fog*0.4);
-          // Face shading (like MC: top=full, sides=0.8, bottom=0.5)
-          const faceSh=(face===2)?1.0:(face===3)?0.5:(face===0||face===1)?0.75:0.85;
-          const totalSh=Math.min(1,shade*faceSh);
+          // Distance fog — Minecraft fades to sky color starting at ~16 blocks, full fog at 48
+          const fogAmt = Math.max(0, Math.min(1, (dist - 16) / 32));
+          // Face shading (Minecraft style: top=1.0, N/S=0.8, E/W=0.6, bottom=0.5)
+          const faceSh=(face===2)?1.0:(face===3)?0.5:(face===0||face===1)?0.65:0.80;
+          const totalSh = ll * faceSh;
 
           let tr=(t32)&0xFF, tg=(t32>>8)&0xFF, tb2=(t32>>16)&0xFF;
-          const fogR=sr, fogG=sg, fogB=sb;
-          tr=lerp(fogR,tr*totalSh,fog)|0;
-          tg=lerp(fogG,tg*totalSh,fog)|0;
-          tb2=lerp(fogB,tb2*totalSh,fog)|0;
+          // Apply lighting first
+          tr = (tr * totalSh)|0;
+          tg = (tg * totalSh)|0;
+          tb2 = (tb2 * totalSh)|0;
+          // Then blend toward sky color with fog
+          tr = lerp(tr, sr, fogAmt)|0;
+          tg = lerp(tg, sg, fogAmt)|0;
+          tb2 = lerp(tb2, sb, fogAmt)|0;
           // Breaking crack overlay
           if(breakBx===bx&&breakBy===by&&breakBz===bz&&breakTick>0){
             const prog=breakTick/bHard(id);
@@ -1765,15 +1799,18 @@ function ipodRewind() {
     generateWorld();
     bakeTextures();
 
-    // Spawn player on surface
+    // Spawn player on surface — search top-down to find the first solid block
     const spawnX=Math.floor(WX/2), spawnZ=Math.floor(WZ/2);
-    for(let y=0;y<WY;y++){
-      if(bSolid(getB(spawnX,y,spawnZ))){
-        px=spawnX+0.5; py=y-PLAYER_H-0.01; pz=spawnZ+0.5; break;
+    let spawnY = 2; // fallback
+    for(let y=1;y<WY-1;y++){
+      if(bSolid(getB(spawnX,y,spawnZ)) && !bSolid(getB(spawnX,y-1,spawnZ))){
+        spawnY = y - 1; // stand on top of this block (feet one block above)
+        break;
       }
     }
+    px=spawnX+0.5; py=spawnY - PLAYER_H - 0.01; pz=spawnZ+0.5;
     pvx=0; pvy=0; pvz=0; onGround=false;
-    yaw=0.3; pitch=-0.1;
+    yaw=0.3; pitch=0.0;
 
     // ---- Pointer lock (enhancement, not required) ----
     function tryLockPointer(){
