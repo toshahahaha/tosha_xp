@@ -1056,6 +1056,8 @@ function ipodRewind() {
   const keys = {};
   let lmb=false, rmb=false, lastRmb=0;
   let breakTick=0, breakBx=-1,breakBy=-1,breakBz=-1;
+  // Drag-to-look (Mac/trackpad fallback — works without pointer lock)
+  let dragging=false, lastMouseX=0, lastMouseY=0;
 
   // --- Hotbar ---
   let hotbar=[
@@ -1531,24 +1533,41 @@ function ipodRewind() {
       ctx.fillStyle='rgba(0,0,0,0.65)';
       ctx.fillRect(0,0,cw,ch);
       // Panel
-      const pw=360, ph=130;
+      const pw=380, ph=148;
       const px2=cw/2-pw/2, py2=ch/2-ph/2;
-      ctx.fillStyle='rgba(30,30,30,0.92)';
-      ctx.strokeStyle='rgba(255,255,255,0.2)';
+      ctx.fillStyle='rgba(20,20,20,0.94)';
+      ctx.strokeStyle='rgba(255,255,255,0.22)';
       ctx.lineWidth=1;
-      ctx.fillRect(px2,py2,pw,ph);
-      ctx.strokeRect(px2+0.5,py2+0.5,pw-1,ph-1);
+      roundRect(ctx,px2,py2,pw,ph,6); ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,0.22)';
+      roundRect(ctx,px2+0.5,py2+0.5,pw-1,ph-1,6); ctx.stroke();
       ctx.fillStyle='#fff';
       ctx.font='bold 18px "Courier New",monospace';
       ctx.textAlign='center';
       ctx.fillText('🎮  Click to Play',cw/2,py2+32);
       ctx.font='11px "Courier New",monospace';
       ctx.fillStyle='#aaa';
-      ctx.fillText('WASD · Move        Space · Jump',cw/2,py2+58);
-      ctx.fillText('LClick · Break     RClick · Place',cw/2,py2+76);
-      ctx.fillText('Scroll/1–9 · Select block',cw/2,py2+94);
+      ctx.fillText('WASD · Move               Space · Jump',cw/2,py2+56);
+      ctx.fillText('Click + Drag · Look around',cw/2,py2+73);
+      ctx.fillText('LClick · Break block      RClick · Place',cw/2,py2+90);
+      ctx.fillText('Scroll / 1–9 · Select hotbar slot',cw/2,py2+107);
+      ctx.fillStyle='#44ccff';
+      ctx.fillText('✓ Mac & Trackpad friendly — no lock needed',cw/2,py2+125);
       ctx.fillStyle='#ff9944';
-      ctx.fillText('Esc · Release mouse / Pause',cw/2,py2+115);
+      ctx.fillText('Esc · Pause',cw/2,py2+142);
+      ctx.textAlign='left';
+    } else {
+      // Pause button (top-right of canvas, always visible while playing)
+      const bw=68, bh=26, bx2=cw-bw-4, by2=4;
+      ctx.fillStyle='rgba(0,0,0,0.55)';
+      roundRect(ctx,bx2,by2,bw,bh,4); ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,0.3)';
+      ctx.lineWidth=1;
+      roundRect(ctx,bx2+0.5,by2+0.5,bw-1,bh-1,4); ctx.stroke();
+      ctx.fillStyle='rgba(255,255,255,0.75)';
+      ctx.font='bold 10px "Courier New",monospace';
+      ctx.textAlign='center';
+      ctx.fillText('⏸ Esc/Pause', bx2+bw/2, by2+17);
       ctx.textAlign='left';
     }
   }
@@ -1756,56 +1775,118 @@ function ipodRewind() {
     pvx=0; pvy=0; pvz=0; onGround=false;
     yaw=0.3; pitch=-0.1;
 
-    // Pointer lock for mouse look
-    function lockPointer(){
-      if(canvas.requestPointerLock) canvas.requestPointerLock();
+    // ---- Pointer lock (enhancement, not required) ----
+    function tryLockPointer(){
+      if(canvas.requestPointerLock){
+        try{ canvas.requestPointerLock(); } catch(err){}
+      }
     }
-    function unlockPointer(){
-      if(document.exitPointerLock) document.exitPointerLock();
-      pointerLocked=false; mcFocused=false;
+    function releaseLock(){
+      try{ if(document.exitPointerLock) document.exitPointerLock(); } catch(err){}
+      pointerLocked=false;
+    }
+    function pauseGame(){
+      releaseLock();
+      mcFocused=false; dragging=false;
       Object.keys(keys).forEach(k=>keys[k]=false);
       lmb=false; rmb=false;
     }
 
-    canvas.addEventListener('click',()=>{
-      if(!pointerLocked) lockPointer();
-    });
     document.addEventListener('pointerlockchange',()=>{
       pointerLocked=(document.pointerLockElement===canvas);
-      mcFocused=pointerLocked;
-      if(!pointerLocked){ Object.keys(keys).forEach(k=>keys[k]=false); lmb=false; rmb=false; }
+      if(!pointerLocked && mcFocused){
+        // Pointer lock lost but keep game focused (Mac fallback still works)
+      }
     });
+
+    // ---- Mouse move: pointer lock delta OR drag delta ----
     canvas.addEventListener('mousemove',e=>{
-      if(!pointerLocked) return;
-      yaw   += e.movementX * 0.002;
-      pitch -= e.movementY * 0.002;
+      if(!mcFocused) return;
+      if(pointerLocked){
+        // Pointer lock gives us reliable movementX/Y
+        yaw   += e.movementX * 0.003;
+        pitch -= e.movementY * 0.003;
+      } else if(dragging){
+        // Drag-to-look fallback (Mac/trackpad friendly)
+        const dx = e.clientX - lastMouseX;
+        const dy = e.clientY - lastMouseY;
+        yaw   += dx * 0.004;
+        pitch -= dy * 0.004;
+      }
+      lastMouseX=e.clientX; lastMouseY=e.clientY;
       pitch=Math.max(-Math.PI*0.49,Math.min(Math.PI*0.49,pitch));
     });
+
+    // ---- Mousedown: focus + drag start + block actions ----
     canvas.addEventListener('mousedown',e=>{
-      if(!pointerLocked){ lockPointer(); return; }
-      if(e.button===0){ lmb=true; }
+      // Check if pause button was clicked (top-right corner, 70×28 area)
+      if(mcFocused && e.clientX > canvas.getBoundingClientRect().right - 76 &&
+         e.clientY < canvas.getBoundingClientRect().top + 34){
+        pauseGame(); e.preventDefault(); return;
+      }
+      if(!mcFocused){
+        mcFocused=true;
+        tryLockPointer();
+        lastMouseX=e.clientX; lastMouseY=e.clientY;
+        e.preventDefault(); return;
+      }
+      lastMouseX=e.clientX; lastMouseY=e.clientY;
+      if(e.button===0){ lmb=true; dragging=true; }
       if(e.button===2){ rmb=true; doPlace(); }
       e.preventDefault();
     });
     canvas.addEventListener('mouseup',e=>{
-      if(e.button===0) lmb=false;
+      if(e.button===0){ lmb=false; dragging=false; }
       if(e.button===2) rmb=false;
     });
+    // Touch: two-finger drag for look, one-finger for move (basic)
+    let touchStartX=0, touchStartY=0, touchId=-1;
+    canvas.addEventListener('touchstart',e=>{
+      if(!mcFocused){ mcFocused=true; }
+      if(e.touches.length===1){
+        touchId=e.touches[0].identifier;
+        touchStartX=e.touches[0].clientX;
+        touchStartY=e.touches[0].clientY;
+        lastMouseX=touchStartX; lastMouseY=touchStartY;
+        dragging=true;
+      }
+      e.preventDefault();
+    },{passive:false});
+    canvas.addEventListener('touchmove',e=>{
+      if(!mcFocused) return;
+      for(let i=0;i<e.touches.length;i++){
+        if(e.touches[i].identifier===touchId){
+          const dx=e.touches[i].clientX-lastMouseX;
+          const dy=e.touches[i].clientY-lastMouseY;
+          yaw   += dx * 0.005;
+          pitch -= dy * 0.005;
+          pitch=Math.max(-Math.PI*0.49,Math.min(Math.PI*0.49,pitch));
+          lastMouseX=e.touches[i].clientX;
+          lastMouseY=e.touches[i].clientY;
+        }
+      }
+      e.preventDefault();
+    },{passive:false});
+    canvas.addEventListener('touchend',e=>{ dragging=false; e.preventDefault(); },{passive:false});
+
     canvas.addEventListener('contextmenu',e=>e.preventDefault());
+
+    // ---- Scroll: slot selection (no pointer lock gate) ----
     canvas.addEventListener('wheel',e=>{
-      if(!pointerLocked) return;
+      if(!mcFocused) return;
       slot=((slot+(e.deltaY>0?1:-1))+9)%9;
       e.preventDefault();
     },{passive:false});
+
+    // ---- Keyboard: works whenever game is focused (no pointer lock required) ----
     document.addEventListener('keydown',e=>{
       const win2=document.getElementById('minecraft');
       if(!win2||!win2.classList.contains('show')) return;
-      // Escape: always unlock and pause
       if(e.key==='Escape'){
-        unlockPointer();
+        pauseGame();
         return;
       }
-      if(!pointerLocked) return;
+      if(!mcFocused) return;
       keys[e.key.toLowerCase()]=true;
       if(e.key>='1'&&e.key<='9') slot=parseInt(e.key)-1;
       e.preventDefault(); e.stopPropagation();
