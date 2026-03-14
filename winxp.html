@@ -51,15 +51,14 @@
 <div id="login-screen">
   <div class="login-top-bar">
     <div class="logo-text">
-      <!-- Windows Logo -->
-      <svg class="win-logo-login" viewBox="0 0 40 40" fill="none">
-        <rect x="0" y="0" width="18" height="18" rx="2" fill="#f25022"/>
-        <rect x="22" y="0" width="18" height="18" rx="2" fill="#7fba00"/>
-        <rect x="0" y="22" width="18" height="18" rx="2" fill="#00a4ef"/>
-        <rect x="22" y="22" width="18" height="18" rx="2" fill="#ffb900"/>
-      </svg>
+      <!-- ✅ Use your Microsoft flag PNG here -->
+      <img class="win-logo-login" src="boot_windows.png" alt="Microsoft flag" draggable="false" />
+
       <div>
-        <div>Tosha<sup style="font-style:italic; font-size:16px; color:#ff8040; font-family:'Wix Madefor Display',Tahoma,sans-serif;">xp</sup></div>
+        <div>
+          Tosha
+          <sup class="top-xp">xp</sup>
+        </div>
         <div class="login-tagline">Visual Designer &amp; Technical Sales</div>
       </div>
     </div>
@@ -68,9 +67,13 @@
   <div class="login-center">
     <div class="login-left">
       <div class="logo-area">
+        <!-- ✅ Big centered flag like the first reference -->
+        <img class="login-flag" src="microsoft-flag.png" alt="Microsoft flag" draggable="false" />
+
         <div class="login-xp-logo">Tosha<sup>xp</sup></div>
         <div class="login-xp-sub">Visual Designer &amp; Technical Sales</div>
       </div>
+
       <div class="login-instruction">To begin, click on Tosha to log in</div>
     </div>
 
@@ -92,7 +95,11 @@
       <div class="restart-icon">⟳</div>
       Restart Tosha XP
     </button>
-    <span>After you log on, the system's yours to explore. Every detail has been designed with a purpose.</span>
+
+    <div class="login-bottom-copy">
+      <div>After you log on, the system's yours to explore.</div>
+      <div class="login-bottom-sub">Every detail has been designed with a purpose.</div>
+    </div>
   </div>
 </div>
 
@@ -200,6 +207,27 @@
         <line x1="44" y1="38" x2="28" y2="22" stroke="#3070c8" stroke-width="2"/>
       </svg>
       <span class="icon-label">Contact Me</span>
+    </div>
+
+    <div class="desktop-icon" ondblclick="openWindow('minecraft')">
+      <svg width="48" height="48" viewBox="0 0 48 48">
+        <!-- Grass block top -->
+        <rect x="4" y="4" width="40" height="14" fill="#5A9E1C"/>
+        <rect x="4" y="4" width="6" height="6" fill="#3E7A0A" opacity="0.7"/>
+        <rect x="14" y="6" width="5" height="5" fill="#6DB825" opacity="0.6"/>
+        <rect x="26" y="5" width="6" height="5" fill="#3E7A0A" opacity="0.5"/>
+        <rect x="36" y="7" width="5" height="4" fill="#6DB825" opacity="0.7"/>
+        <!-- Dirt sides -->
+        <rect x="4" y="18" width="40" height="26" fill="#7B4F2E"/>
+        <rect x="8" y="22" width="5" height="5" fill="#5A3A20" opacity="0.6"/>
+        <rect x="20" y="30" width="6" height="5" fill="#9B6E4C" opacity="0.5"/>
+        <rect x="32" y="24" width="5" height="6" fill="#5A3A20" opacity="0.6"/>
+        <rect x="14" y="36" width="7" height="4" fill="#9B6E4C" opacity="0.4"/>
+        <!-- Block border -->
+        <rect x="4" y="4" width="40" height="40" fill="none" stroke="rgba(0,0,0,0.4)" stroke-width="1.5"/>
+        <line x1="4" y1="18" x2="44" y2="18" stroke="rgba(0,0,0,0.3)" stroke-width="1"/>
+      </svg>
+      <span class="icon-label">Minecraft</span>
     </div>
   </div>
 
@@ -535,12 +563,23 @@
             </div>
             <!-- Now Playing header -->
             <div class="ipod-now-playing-header">Now Playing</div>
-            <!-- Album art placeholder -->
+            <!-- Album art -->
             <div class="ipod-album-art">
-              <div class="ipod-art-inner">
-                <div class="ipod-music-note">♫</div>
-              </div>
+              <img
+                id="ipod-cover"
+                class="ipod-cover"
+                src="https://i1.sndcdn.com/artworks-IXsnvZeztxgQoL29-INTj2g-t500x500.png"
+                alt="I Love My Computer — Ninajirachi album art"
+                draggable="false"
+              />
             </div>
+
+            <!-- Hidden audio element (drives the player) -->
+            <audio
+              id="ipod-audio"
+              preload="metadata"
+              src="iPod Touch.mp3"
+            ></audio>
             <!-- Song info -->
             <div class="ipod-song-info">
               <div class="ipod-song-title" id="ipod-marquee">
@@ -645,6 +684,10 @@
           <div class="sm-icon">🖼️</div>
           <div class="sm-item-text"><div class="sm-item-main">Paint</div></div>
         </div>
+        <div class="sm-item" onclick="openWindow('minecraft'); toggleStartMenu()">
+          <div class="sm-icon">⛏️</div>
+          <div class="sm-item-text"><div class="sm-item-main">Minecraft</div><div class="sm-item-sub">Alpha 1.0.16_02</div></div>
+        </div>
         <div class="sm-separator"></div>
         <div class="sm-item">
           <div class="sm-icon">🗂️</div>
@@ -707,101 +750,200 @@
   </div>
 
   <!-- =================== PAINT =================== -->
-<div class="xp-window" id="paint" style="width: 860px; height: 620px; left: 80px; top: 70px;">
-  <div class="win-titlebar">
-    <div class="win-title">
-      <span class="win-title-icon">🎨</span>
-      Paint
-    </div>
+<div class="xp-window" id="paint" style="width:860px; height:620px; left:80px; top:70px;">
+  <div class="win-resize win-resize-nw" onmousedown="startResize(event,'paint','nw')"></div>
+  <div class="win-resize win-resize-n"  onmousedown="startResize(event,'paint','n')"></div>
+  <div class="win-resize win-resize-ne" onmousedown="startResize(event,'paint','ne')"></div>
+  <div class="win-resize win-resize-w"  onmousedown="startResize(event,'paint','w')"></div>
+  <div class="win-resize win-resize-e"  onmousedown="startResize(event,'paint','e')"></div>
+  <div class="win-resize win-resize-sw" onmousedown="startResize(event,'paint','sw')"></div>
+  <div class="win-resize win-resize-s"  onmousedown="startResize(event,'paint','s')"></div>
+  <div class="win-resize win-resize-se" onmousedown="startResize(event,'paint','se')"></div>
+
+  <div class="win-titlebar" onmousedown="startDrag(event,'paint')">
+    <span class="win-title-icon" style="font-size:14px;">🎨</span>
+    <span class="win-title-text">untitled - Paint</span>
     <div class="win-controls">
-      <button class="win-btn" onclick="minimizeWindow('paint')" title="Minimize">_</button>
-      <button class="win-btn" onclick="maximizeWindow('paint')" title="Maximize">▢</button>
-      <button class="win-btn close" onclick="closeWindow('paint')" title="Close">✕</button>
+      <div class="win-btn win-btn-min" onclick="minimizeWin('paint')">🗕</div>
+      <div class="win-btn win-btn-max">🗗</div>
+      <div class="win-btn win-btn-close" onclick="closeWindow('paint')">✕</div>
     </div>
   </div>
 
-  <div class="win-menubar paint-menubar">
-    <button class="paint-menu-btn" data-menu="file">File</button>
-    <button class="paint-menu-btn" data-menu="edit">Edit</button>
-    <button class="paint-menu-btn" data-menu="view">View</button>
-    <button class="paint-menu-btn" data-menu="image">Image</button>
-    <button class="paint-menu-btn" data-menu="colors">Colors</button>
-    <button class="paint-menu-btn" data-menu="help">Help</button>
-
-    <!-- simple dropdown -->
-    <div class="paint-menu" id="paintMenu">
-      <button data-action="new">New</button>
-      <button data-action="open">Open…</button>
-      <button data-action="save">Save As…</button>
-      <div class="sep"></div>
-      <button data-action="clear">Clear Image</button>
-      <div class="sep"></div>
-      <button data-action="exit">Exit</button>
+  <!-- Menu bar -->
+  <div class="win-menubar paint-menubar" id="paintMenubar">
+    <div class="paint-menu-item" data-menu="file">File</div>
+    <div class="paint-menu-item" data-menu="edit">Edit</div>
+    <div class="paint-menu-item" data-menu="view">View</div>
+    <div class="paint-menu-item" data-menu="image">Image</div>
+    <div class="paint-menu-item" data-menu="colors">Colors</div>
+    <div class="paint-menu-item" data-menu="help">Help</div>
+    <!-- Dropdown menus -->
+    <div class="paint-dropdown" id="paintDropFile">
+      <div class="paint-dd-item" data-action="new">New</div>
+      <div class="paint-dd-item" data-action="open">Open…</div>
+      <div class="paint-dd-item" data-action="save">Save</div>
+      <div class="paint-dd-item" data-action="saveas">Save As…</div>
+      <div class="paint-dd-sep"></div>
+      <div class="paint-dd-item" data-action="exit">Exit</div>
     </div>
+    <div class="paint-dropdown" id="paintDropEdit">
+      <div class="paint-dd-item" data-action="undo">Undo <span class="paint-dd-shortcut">Ctrl+Z</span></div>
+      <div class="paint-dd-item" data-action="redo">Repeat <span class="paint-dd-shortcut">Ctrl+Y</span></div>
+      <div class="paint-dd-sep"></div>
+      <div class="paint-dd-item" data-action="selectall">Select All <span class="paint-dd-shortcut">Ctrl+A</span></div>
+      <div class="paint-dd-sep"></div>
+      <div class="paint-dd-item" data-action="clear">Clear Selection</div>
+      <div class="paint-dd-item" data-action="clearimage">Clear Image</div>
+    </div>
+    <div class="paint-dropdown" id="paintDropImage">
+      <div class="paint-dd-item" data-action="fliph">Flip/Rotate…</div>
+      <div class="paint-dd-item" data-action="stretchskew">Stretch/Skew…</div>
+      <div class="paint-dd-sep"></div>
+      <div class="paint-dd-item" data-action="invertcolors">Invert Colors <span class="paint-dd-shortcut">Ctrl+I</span></div>
+      <div class="paint-dd-sep"></div>
+      <div class="paint-dd-item" data-action="attrs">Attributes… <span class="paint-dd-shortcut">Ctrl+E</span></div>
+    </div>
+    <input id="paintFile" type="file" accept="image/*" hidden />
   </div>
 
-  <div class="win-content paint-app">
-    <!-- Left tool palette -->
-    <div class="paint-tools" role="toolbar" aria-label="Tools">
-      <button class="tool active" data-tool="pencil" title="Pencil">✏️</button>
-      <button class="tool" data-tool="brush" title="Brush">🖌️</button>
-      <button class="tool" data-tool="eraser" title="Eraser">🧽</button>
-      <div class="paint-divider"></div>
-      <button class="tool" data-tool="line" title="Line">／</button>
-      <button class="tool" data-tool="rect" title="Rectangle">▭</button>
-      <button class="tool" data-tool="ellipse" title="Ellipse">◯</button>
-      <div class="paint-divider"></div>
-      <button class="tool" data-tool="fill" title="Fill">🪣</button>
-      <div class="paint-divider"></div>
+  <!-- Paint body: toolbox + canvas + colors -->
+  <div class="paint-body">
 
-      <label class="paint-size">
-        Size
-        <input id="paintSize" type="range" min="1" max="30" value="3" />
-      </label>
+    <!-- LEFT TOOLBOX — 2 columns of icon buttons, exactly like XP Paint -->
+    <div class="paint-toolbox" id="paintToolbox">
+      <!-- Row 1: Free Select | Rect Select -->
+      <button class="ptool" data-tool="select-free" title="Free-Form Select">
+        <svg width="20" height="20" viewBox="0 0 20 20"><polyline points="3,3 3,17 8,14 10,18 12,14 17,17 17,3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="ptool" data-tool="select-rect" title="Select">
+        <svg width="20" height="20" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="3,2"/></svg>
+      </button>
+      <!-- Row 2: Eraser | Fill -->
+      <button class="ptool" data-tool="eraser" title="Eraser/Color Eraser">
+        <svg width="20" height="20" viewBox="0 0 20 20"><rect x="2" y="10" width="14" height="7" rx="1" fill="#f5a0a0" stroke="#555" stroke-width="1"/><rect x="2" y="10" width="6" height="7" rx="1" fill="#f0f0f0" stroke="#555" stroke-width="1"/><line x1="2" y1="10" x2="16" y2="10" stroke="#555" stroke-width="1"/></svg>
+      </button>
+      <button class="ptool" data-tool="fill" title="Fill With Color">
+        <svg width="20" height="20" viewBox="0 0 20 20"><path d="M6,14 L12,4 L14,6 L8,16 Z" fill="#555"/><path d="M13,5 L15,7 Q17,5 15,3 Z" fill="#555"/><path d="M4,16 Q4,18 6,18 Q8,18 8,16 Z" fill="#4a8be8"/><line x1="2" y1="19" x2="9" y2="12" stroke="#888" stroke-width="1"/></svg>
+      </button>
+      <!-- Row 3: Pick Color | Magnifier -->
+      <button class="ptool" data-tool="eyedropper" title="Pick Color">
+        <svg width="20" height="20" viewBox="0 0 20 20"><path d="M13,3 L17,7 L9,15 L5,15 L5,11 Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><line x1="5" y1="15" x2="3" y2="17" stroke="currentColor" stroke-width="2"/><line x1="13" y1="3" x2="15" y2="1" stroke="currentColor" stroke-width="1.5"/></svg>
+      </button>
+      <button class="ptool" data-tool="zoom" title="Magnifier">
+        <svg width="20" height="20" viewBox="0 0 20 20"><circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="12" x2="17" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><text x="5.5" y="11" font-size="6" fill="currentColor">+</text></svg>
+      </button>
+      <!-- Row 4: Pencil | Brush -->
+      <button class="ptool active" data-tool="pencil" title="Pencil">
+        <svg width="20" height="20" viewBox="0 0 20 20"><path d="M14,3 L17,6 L7,16 L3,17 L4,13 Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><line x1="12" y1="5" x2="15" y2="8" stroke="currentColor" stroke-width="1.2"/></svg>
+      </button>
+      <button class="ptool" data-tool="brush" title="Brush">
+        <svg width="20" height="20" viewBox="0 0 20 20"><path d="M14,3 L17,6 L9,14 L6,15 L5,12 Z" fill="none" stroke="currentColor" stroke-width="1.3"/><ellipse cx="6" cy="16" rx="3" ry="2" fill="#4a8be8"/></svg>
+      </button>
+      <!-- Row 5: Airbrush | Text -->
+      <button class="ptool" data-tool="airbrush" title="Airbrush">
+        <svg width="20" height="20" viewBox="0 0 20 20"><rect x="3" y="8" width="9" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="12" y="10" width="5" height="2" fill="currentColor"/><circle cx="7" cy="5" r="2" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="12" cy="5" r="1" fill="currentColor"/><circle cx="15" cy="5" r="1" fill="currentColor"/><circle cx="14" cy="8" r="1" fill="currentColor"/></svg>
+      </button>
+      <button class="ptool" data-tool="text" title="Text">
+        <svg width="20" height="20" viewBox="0 0 20 20"><text x="3" y="16" font-family="serif" font-size="16" font-weight="bold" fill="currentColor">A</text></svg>
+      </button>
+      <!-- Row 6: Line | Curve -->
+      <button class="ptool" data-tool="line" title="Line">
+        <svg width="20" height="20" viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="currentColor" stroke-width="1.5"/></svg>
+      </button>
+      <button class="ptool" data-tool="curve" title="Curve">
+        <svg width="20" height="20" viewBox="0 0 20 20"><path d="M3,17 Q10,2 17,3" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+      </button>
+      <!-- Row 7: Rect | Polygon -->
+      <button class="ptool" data-tool="rect" title="Rectangle">
+        <svg width="20" height="20" viewBox="0 0 20 20"><rect x="3" y="5" width="14" height="10" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+      </button>
+      <button class="ptool" data-tool="polygon" title="Polygon">
+        <svg width="20" height="20" viewBox="0 0 20 20"><polygon points="10,3 17,8 14,17 6,17 3,8" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+      </button>
+      <!-- Row 8: Ellipse | Rounded Rect -->
+      <button class="ptool" data-tool="ellipse" title="Ellipse">
+        <svg width="20" height="20" viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="7" ry="5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+      </button>
+      <button class="ptool" data-tool="roundrect" title="Rounded Rectangle">
+        <svg width="20" height="20" viewBox="0 0 20 20"><rect x="3" y="5" width="14" height="10" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+      </button>
 
-      <div class="paint-actions">
-        <button id="paintUndo" title="Undo">↶</button>
-        <button id="paintRedo" title="Redo">↷</button>
-      </div>
-
-      <!-- Hidden file input -->
-      <input id="paintFile" type="file" accept="image/*" hidden />
-    </div>
-
-    <!-- Canvas area -->
-    <div class="paint-stage">
-      <div class="paint-canvas-wrap">
-        <canvas id="paintCanvas" width="1200" height="800"></canvas>
-      </div>
-
-      <!-- Bottom color palette -->
-      <div class="paint-colors">
-        <div class="swatch-pair">
-          <div class="swatch main" id="paintPrimary" title="Primary color"></div>
-          <div class="swatch alt" id="paintSecondary" title="Secondary color"></div>
+      <!-- Brush/line size picker (shown below toolbox) -->
+      <div class="ptool-options" id="ptoolOptions">
+        <div class="ptool-size-grid" id="ptoolSizeGrid">
+          <div class="psize-dot" data-size="1" title="1px"><svg width="18" height="18"><circle cx="9" cy="9" r="1" fill="#000"/></svg></div>
+          <div class="psize-dot" data-size="2" title="2px"><svg width="18" height="18"><circle cx="9" cy="9" r="1.5" fill="#000"/></svg></div>
+          <div class="psize-dot active" data-size="3" title="3px"><svg width="18" height="18"><circle cx="9" cy="9" r="2.5" fill="#000"/></svg></div>
+          <div class="psize-dot" data-size="5" title="5px"><svg width="18" height="18"><circle cx="9" cy="9" r="4" fill="#000"/></svg></div>
         </div>
+      </div>
+    </div>
 
-        <div class="palette" id="paintPalette"></div>
+    <!-- MAIN AREA: canvas + scrollbars -->
+    <div class="paint-main">
+      <div class="paint-canvas-scroll" id="paintCanvasScroll">
+        <div class="paint-canvas-pad">
+          <div class="paint-canvas-outer" id="paintCanvasOuter">
+            <canvas id="paintCanvas" width="620" height="450"></canvas>
+            <!-- Selection overlay canvas -->
+            <canvas id="paintSelCanvas" width="620" height="450" style="position:absolute;top:0;left:0;pointer-events:none;"></canvas>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="win-statusbar paint-status">
-    <span id="paintStatusLeft">Ready</span>
-    <span id="paintStatusRight">1200 × 800px</span>
+  <!-- Color bar at very bottom (above statusbar) -->
+  <div class="paint-colorbar">
+    <div class="paint-colorbar-swatches">
+      <div class="paint-swatch-fg" id="paintFG" title="Foreground (Left-click to change)"></div>
+      <div class="paint-swatch-bg" id="paintBG" title="Background (Right-click to change)"></div>
+    </div>
+    <div class="paint-palette" id="paintPalette"></div>
   </div>
 
-  <!-- Resize handles (match your existing window system if you use these) -->
-  <div class="win-resize win-resize-n"></div>
-  <div class="win-resize win-resize-s"></div>
-  <div class="win-resize win-resize-w"></div>
-  <div class="win-resize win-resize-e"></div>
-  <div class="win-resize win-resize-nw"></div>
-  <div class="win-resize win-resize-ne"></div>
-  <div class="win-resize win-resize-sw"></div>
-  <div class="win-resize win-resize-se"></div>
+  <div class="paint-statusbar">
+    <span id="paintStatusLeft"></span>
+    <div class="paint-status-dividers">
+      <span id="paintStatusCoords"></span>
+      <span id="paintStatusSize">620 × 450</span>
+    </div>
+  </div>
 </div>
 <!-- =================== /PAINT =================== -->
+
+  <!-- =================== MINECRAFT =================== -->
+  <div class="xp-window" id="minecraft" style="top:40px; left:80px; width:860px; height:580px;">
+    <div class="win-resize win-resize-nw" onmousedown="startResize(event,'minecraft','nw')"></div>
+    <div class="win-resize win-resize-n"  onmousedown="startResize(event,'minecraft','n')"></div>
+    <div class="win-resize win-resize-ne" onmousedown="startResize(event,'minecraft','ne')"></div>
+    <div class="win-resize win-resize-w"  onmousedown="startResize(event,'minecraft','w')"></div>
+    <div class="win-resize win-resize-e"  onmousedown="startResize(event,'minecraft','e')"></div>
+    <div class="win-resize win-resize-sw" onmousedown="startResize(event,'minecraft','sw')"></div>
+    <div class="win-resize win-resize-s"  onmousedown="startResize(event,'minecraft','s')"></div>
+    <div class="win-resize win-resize-se" onmousedown="startResize(event,'minecraft','se')"></div>
+    <div class="win-titlebar" onmousedown="startDrag(event, 'minecraft')">
+      <span class="win-title-icon">⛏️</span>
+      <span class="win-title-text">Minecraft Alpha 1.0.16_02 — Singleplayer</span>
+      <div class="win-controls">
+        <div class="win-btn win-btn-min" onclick="minimizeWin('minecraft')">🗕</div>
+        <div class="win-btn win-btn-max">🗗</div>
+        <div class="win-btn win-btn-close" onclick="closeWindow('minecraft')">✕</div>
+      </div>
+    </div>
+    <div class="win-menubar">
+      <div class="win-menu-item">Game</div>
+      <div class="win-menu-item">Options</div>
+      <div class="win-menu-item">Multiplayer</div>
+      <div class="win-menu-item">Help</div>
+    </div>
+    <div class="win-body" style="background:#000; padding:0;">
+      <canvas id="mc-canvas" tabindex="0" style="flex:1; min-width:0; min-height:0; display:block; cursor:crosshair; outline:none; image-rendering:pixelated;"></canvas>
+    </div>
+    <div class="win-statusbar" id="mc-status">Click game to focus · WASD: Move · Space: Jump · LClick: Break · RClick: Place · 1–9: Hotbar · Scroll: Change block</div>
+  </div>
+  <!-- =================== /MINECRAFT =================== -->
 
   <!-- Log Off Dialog -->
   <div id="logoff-dialog">

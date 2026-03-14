@@ -52,13 +52,29 @@ button, input, textarea, select, label {
   z-index: 9999;
   display: flex;
   flex-direction: column;
-  background: #3d6fc4;
+
+  /* closer to ref: deeper mid blue */
+  background: linear-gradient(to bottom, #2c61c6 0%, #3d6fc4 55%, #2c61c6 100%);
 }
 
+/* subtle XP-ish texture */
+#login-screen::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  opacity:.18;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(255,255,255,.22), transparent 55%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.06), rgba(255,255,255,.06) 1px, transparent 1px, transparent 7px);
+}
+
+/* Top bar (more like the first: less “busy”) */
 .login-top-bar {
-  height: 80px;
-  background: linear-gradient(180deg, #1a3a9f 0%, #3260c4 100%);
-  border-bottom: 2px solid #5a8adf;
+  position: relative;
+  height: 72px;
+  background: linear-gradient(180deg, #1b4fb4 0%, #2f67cb 100%);
+  border-bottom: 2px solid rgba(255,255,255,0.25);
   display: flex;
   align-items: center;
   padding: 0 40px;
@@ -76,8 +92,20 @@ button, input, textarea, select, label {
 }
 
 .win-logo-login {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,.25));
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.top-xp{
+  font-style: italic;
+  font-size: 16px;
+  color: #ff8040;
+  font-family:'Wix Madefor Display',Tahoma,sans-serif;
+  font-weight: 800;
+  margin-left: 2px;
 }
 
 .login-tagline {
@@ -89,7 +117,9 @@ button, input, textarea, select, label {
   margin-top: 3px;
 }
 
+/* Center layout */
 .login-center {
+  position: relative;
   flex: 1;
   display: flex;
   align-items: center;
@@ -97,13 +127,14 @@ button, input, textarea, select, label {
   gap: 0;
 }
 
+/* LEFT side — match first screenshot */
 .login-left {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 20px;
+  gap: 22px;
   color: white;
 }
 
@@ -111,47 +142,62 @@ button, input, textarea, select, label {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+}
+
+/* big flag above the name */
+.login-flag{
+  width: 96px;
+  height: auto;
+  margin-bottom: 6px;
+  filter: drop-shadow(0 10px 14px rgba(0,0,0,.22));
+  user-select:none;
+  -webkit-user-drag:none;
 }
 
 .login-xp-logo {
-  font-size: 56px;
+  font-size: 62px;
   font-weight: 800;
   font-family: 'Wix Madefor Display', Tahoma, sans-serif;
   color: white;
-  text-shadow: 2px 2px 8px rgba(0,0,80,0.5);
+  text-shadow: 2px 2px 10px rgba(0,0,80,0.45);
   line-height: 1;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.8px;
 }
 
 .login-xp-logo sup {
-  font-size: 26px;
+  font-size: 28px;
   color: #ff8040;
   font-style: italic;
   font-family: 'Wix Madefor Display', Tahoma, sans-serif;
+  transform: translateY(-10px);
+  display: inline-block;
 }
 
 .login-xp-sub {
-  color: #c8d8f8;
+  color: rgba(255,255,255,.88);
   font-style: italic;
   font-size: 15px;
   font-family: 'Work Sans', Tahoma, sans-serif;
   font-weight: 400;
   letter-spacing: 0.2px;
+  margin-top: -2px;
 }
 
 .login-instruction {
-  color: white;
-  font-size: 13px;
+  color: rgba(255,255,255,.92);
+  font-size: 18px; /* closer to ref */
   font-family: 'Work Sans', Tahoma, sans-serif;
 }
 
+/* Divider like XP: faded ends */
 .login-divider {
   width: 1px;
-  height: 60%;
-  background: rgba(255,255,255,0.3);
+  height: 70%;
+  background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.35), transparent);
 }
 
+/* RIGHT */
 .login-right {
   flex: 1;
   display: flex;
@@ -166,13 +212,18 @@ button, input, textarea, select, label {
   align-items: center;
   gap: 16px;
   cursor: pointer;
-  padding: 10px 20px;
-  border-radius: 4px;
-  transition: background 0.15s;
+  padding: 10px 18px;
+  border-radius: 6px;
+  transition: background 0.15s, transform .12s, border-color .12s;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  box-shadow: 0 10px 22px rgba(0,0,0,.14);
 }
 
 .user-button:hover {
-  background: rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.10);
+  border-color: rgba(255,255,255,.2);
+  transform: translateY(-1px);
 }
 
 .user-avatar {
@@ -193,61 +244,88 @@ button, input, textarea, select, label {
   display: block;
 }
 
-.user-info {
-  color: white;
-}
+.user-info { color: white; }
 
 .user-name {
-  font-size: 26px;
-  font-weight: 500;
+  font-size: 30px; /* closer to ref */
+  font-weight: 600;
   font-family: 'Wix Madefor Display', Tahoma, sans-serif;
-  color: white;
-  letter-spacing: 0.25px;
+  letter-spacing: 0.2px;
 }
 
 .user-role {
   font-size: 13px;
-  color: #90b8ff;
+  color: #0a246a;
   font-weight: 700;
+  background: rgba(255,255,255,.60);
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  margin-top: 2px;
 }
 
+/* Bottom bar like XP (orange line + right copy) */
 .login-bottom {
-  height: 60px;
-  background: linear-gradient(180deg, #1a3a9f 0%, #3260c4 100%);
-  border-top: 2px solid #5a8adf;
+  position: relative;
+  height: 76px;
+  background: linear-gradient(180deg, #0f4da8 0%, #1f5bc4 60%, #0f47a0 100%);
+  border-top: 2px solid rgba(255,255,255,0.22);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 30px;
+  padding: 0 18px;
   color: white;
-  font-size: 12px;
   font-family: 'Work Sans', Tahoma, sans-serif;
+}
+
+.login-bottom::before{
+  content:"";
+  position:absolute;
+  left:0; right:0; top:0;
+  height:2px;
+  background:#ff8b2a;
+  opacity:.85;
 }
 
 .restart-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
   background: none;
   border: none;
   color: white;
   font-family: var(--font-pixel);
   font-size: 11px;
+  padding: 8px 10px;
+  border-radius: 6px;
 }
 
-.restart-btn:hover { text-decoration: underline; }
+.restart-btn:hover { background: rgba(255,255,255,.08); }
 
 .restart-icon {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   background: radial-gradient(circle, #6adc6a 0%, #2a9a2a 60%, #1a6a1a 100%);
-  border-radius: 50%;
-  border: 2px solid #0a4a0a;
+  border-radius: 8px;
+  border: 2px solid rgba(0,0,0,.25);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.18), 0 6px 14px rgba(0,0,0,.18);
+}
+
+.login-bottom-copy{
+  text-align: right;
+  font-size: 15px;
+  line-height: 1.15;
+  text-shadow: 0 1px 6px rgba(0,0,0,.18);
+}
+.login-bottom-sub{
+  font-size: 13px;
+  color: rgba(255,255,255,.78);
+  margin-top: 3px;
 }
 
 /* ===================== WELCOME SCREEN ===================== */
@@ -1185,6 +1263,18 @@ button, input, textarea, select, label {
   );
 }
 
+.ipod-cover{
+  position: relative;
+  z-index: 1;          /* above the ::before pattern */
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
+  image-rendering: auto;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
 .ipod-music-note {
   font-size: 32px;
   opacity: 0.6;
@@ -1380,6 +1470,8 @@ button, input, textarea, select, label {
   transform: translateX(-50%);
   font-size: 9px;
 }
+
+
 
 /* ===================== BOOT LAYOUT: match screenshot ===================== */
 #site-boot{
@@ -1616,177 +1708,351 @@ button, input, textarea, select, label {
   filter: saturate(1.02) contrast(1.02);
 }
 
-/* ===================== PAINT (mini) ===================== */
-.paint-app{
-  display: grid;
-  grid-template-columns: 88px 1fr;
-  height: 100%;
-  background: #d4d0c8;
-}
+/* ===================== PAINT (XP accurate) ===================== */
 
-.paint-menubar{
-  position: relative;
-}
-
-.paint-menu-btn{
-  background: transparent;
-  border: 1px solid transparent;
-  padding: 2px 10px;
-  font-size: 12px;
-  cursor: default;
-}
-.paint-menu-btn:hover{
-  border-color:#0a246a;
-  background: #cfe3ff;
-}
-
-.paint-menu{
-  position: absolute;
-  top: 22px;
-  left: 6px;
-  width: 190px;
-  background: #f3f3f3;
-  border: 1px solid #7f7f7f;
-  box-shadow: 2px 2px 0 rgba(0,0,0,.25);
-  display: none;
-  padding: 4px 0;
-  z-index: 50;
-}
-.paint-menu.show{ display: block; }
-.paint-menu button{
-  width: 100%;
-  text-align: left;
-  font-size: 12px;
-  padding: 5px 10px;
-  border: 0;
-  background: transparent;
-  cursor: default;
-}
-.paint-menu button:hover{
-  background: #316ac5;
-  color: white;
-}
-.paint-menu .sep{
-  height: 1px;
-  background: #c0c0c0;
-  margin: 4px 6px;
-}
-
-.paint-tools{
-  padding: 8px 6px;
-  border-right: 1px solid #a9a9a9;
+/* The paint window uses flex column layout — only when .show is active */
+#paint.show {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  overflow: hidden;
 }
 
-.paint-tools .tool{
-  height: 34px;
-  border: 1px solid #808080;
-  background: linear-gradient(#f6f6f6, #dcdcdc);
-  border-radius: 3px;
-  cursor: default;
-  font-size: 16px;
-  display: grid;
-  place-items: center;
-}
-.paint-tools .tool.active{
-  background: linear-gradient(#cfe3ff, #a8c8ff);
-  border-color:#0a246a;
-}
-
-.paint-divider{
-  height: 1px;
-  background: #a9a9a9;
-  margin: 6px 2px;
-}
-
-.paint-size{
-  margin-top: 4px;
-  font-size: 11px;
-  display: grid;
-  gap: 4px;
-}
-.paint-size input{ width: 100%; }
-
-.paint-actions{
-  margin-top: 6px;
-  display: grid;
-  gap: 6px;
-}
-.paint-actions button{
-  height: 30px;
-  border: 1px solid #808080;
-  background: linear-gradient(#f6f6f6, #dcdcdc);
-  border-radius: 3px;
-  cursor: default;
-  font-size: 14px;
-}
-.paint-actions button:disabled{
-  opacity: .45;
-}
-
-.paint-stage{
-  display: grid;
-  grid-template-rows: 1fr 56px;
-  min-width: 0;
-}
-
-.paint-canvas-wrap{
-  padding: 10px;
-  overflow: auto;
-  background: #bdbdbd;
-}
-
-#paintCanvas{
-  background: white;
-  border: 1px solid #666;
-  box-shadow: inset 1px 1px 0 rgba(255,255,255,.6);
-  image-rendering: pixelated;
-  cursor: crosshair;
-}
-
-.paint-colors{
-  border-top: 1px solid #a9a9a9;
+/* Paint menu bar — override .win-menubar for paint */
+#paint .win-menubar.paint-menubar {
+  display: flex;
+  align-items: stretch;
   background: #d4d0c8;
-  display: grid;
-  grid-template-columns: 66px 1fr;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-}
-
-.swatch-pair{
-  display: grid;
-  width: 54px;
-  height: 40px;
+  border-bottom: 1px solid #fff;
+  box-shadow: 0 1px 0 #808080;
+  padding: 1px 0;
+  height: 20px;
   position: relative;
+  gap: 0;
+  overflow: visible;
+  z-index: 20;
 }
-.swatch{
-  width: 30px;
-  height: 30px;
-  border: 1px solid #333;
-  box-shadow: inset 1px 1px 0 rgba(255,255,255,.5);
+.paint-menu-item {
+  padding: 1px 6px;
+  font-size: 11px;
+  font-family: var(--font-pixel), Tahoma, sans-serif;
+  cursor: default;
+  line-height: 18px;
+  border: 1px solid transparent;
+  white-space: nowrap;
 }
-.swatch.main{ position:absolute; left:0; top:0; z-index:2; }
-.swatch.alt{ position:absolute; left:18px; top:10px; opacity:.95; }
-
-.palette{
-  display: grid;
-  grid-template-columns: repeat(14, 1fr);
-  gap: 3px;
-}
-.palette .color{
-  height: 18px;
-  border: 1px solid rgba(0,0,0,.35);
-  cursor: pointer;
-}
-.palette .color:active{
-  transform: translateY(1px);
+.paint-menu-item:hover,
+.paint-menu-item.open {
+  background: #316ac5;
+  color: #fff;
+  border-color: #0a246a;
 }
 
-.paint-status{
-  display:flex;
+/* Dropdown panels */
+.paint-dropdown {
+  display: none;
+  position: absolute;
+  top: 20px;
+  background: #f3f3f3;
+  border: 1px solid #808080;
+  box-shadow: 2px 2px 3px rgba(0,0,0,0.3);
+  min-width: 180px;
+  padding: 2px 0;
+  z-index: 9999;
+  font-family: var(--font-pixel), Tahoma, sans-serif;
+  font-size: 11px;
+}
+.paint-dropdown.show { display: block; }
+.paint-dd-item {
+  padding: 3px 20px 3px 24px;
+  cursor: default;
+  display: flex;
   justify-content: space-between;
-  padding: 3px 8px;
+  white-space: nowrap;
+}
+.paint-dd-item:hover {
+  background: #316ac5;
+  color: #fff;
+}
+.paint-dd-sep {
+  height: 1px;
+  background: #b0b0b0;
+  margin: 2px 2px;
+}
+.paint-dd-shortcut {
+  color: #808080;
+  margin-left: 20px;
+  font-size: 11px;
+}
+.paint-dd-item:hover .paint-dd-shortcut {
+  color: #ddd;
+}
+
+/* Paint body: toolbox on left, canvas area fills rest */
+.paint-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  background: #d4d0c8;
+  overflow: hidden;
+}
+
+/* TOOLBOX — mimics the XP Paint left panel exactly */
+.paint-toolbox {
+  width: 54px;
+  min-width: 54px;
+  background: #d4d0c8;
+  border-right: 2px solid;
+  border-color: #fff #808080 #808080 #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3px 2px 3px 2px;
+  gap: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex-shrink: 0;
+}
+
+/* Tool icon buttons in a 2-column grid */
+.paint-toolbox {
+  flex-wrap: nowrap;
+}
+
+/* We lay out the tools in 2-column rows using CSS grid via a wrapper */
+.paint-toolbox .ptool {
+  width: 24px;
+  height: 24px;
+  border: 1px solid transparent;
+  background: #d4d0c8;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px;
+  color: #000;
+  float: left;
+  margin: 1px;
+  box-sizing: border-box;
+}
+.paint-toolbox .ptool:hover {
+  border: 1px solid;
+  border-color: #fff #808080 #808080 #fff;
+}
+.paint-toolbox .ptool.active {
+  border: 1px solid;
+  border-color: #808080 #fff #fff #808080;
+  background: #c0c8d8;
+  box-shadow: inset 1px 1px 2px rgba(0,0,0,0.15);
+}
+.paint-toolbox .ptool svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+/* Clear the float after each pair of tools */
+.paint-toolbox::after {
+  content: '';
+  display: block;
+  clear: both;
+}
+
+/* Tool options (size dots) */
+.ptool-options {
+  width: 100%;
+  margin-top: 4px;
+  border-top: 1px solid #808080;
+  border-bottom: 1px solid #fff;
+  padding: 4px 2px;
+  clear: both;
+}
+.ptool-size-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  width: 46px;
+  margin: 0 auto;
+}
+.psize-dot {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  cursor: default;
+}
+.psize-dot:hover {
+  border: 1px solid;
+  border-color: #fff #808080 #808080 #fff;
+}
+.psize-dot.active {
+  border: 1px solid;
+  border-color: #808080 #fff #fff #808080;
+  background: #c0c8d8;
+}
+
+/* MAIN canvas area */
+.paint-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.paint-canvas-scroll {
+  flex: 1;
+  overflow: auto;
+  background: #808080;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+.paint-canvas-pad {
+  display: inline-flex;
+  min-width: 100%;
+  min-height: 100%;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.paint-canvas-outer {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+  /* XP-style sunken canvas border: raised outside */
+  border-top: 1px solid #808080;
+  border-left: 1px solid #808080;
+  border-right: 1px solid #fff;
+  border-bottom: 1px solid #fff;
+  box-shadow: inset 0 0 0 1px #000;
+}
+
+#paintCanvas {
+  display: block;
+  background: #fff;
+  cursor: crosshair;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+#paintSelCanvas {
+  display: block;
+  pointer-events: none;
+}
+
+/* Canvas resize handles (3 dots on edges like XP) */
+.paint-canvas-outer::after {
+  content: '';
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 7px;
+  height: 7px;
+  background: #fff;
+  border: 1px solid #000;
+  cursor: se-resize;
+}
+
+/* COLOR BAR at bottom */
+.paint-colorbar {
+  height: 36px;
+  min-height: 36px;
+  background: #d4d0c8;
+  border-top: 2px solid;
+  border-color: #fff #808080 #808080 #fff;
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Foreground / Background swatch stack */
+.paint-colorbar-swatches {
+  position: relative;
+  width: 36px;
+  height: 30px;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+.paint-swatch-fg,
+.paint-swatch-bg {
+  width: 22px;
+  height: 22px;
+  border: 1px solid;
+  border-color: #808080 #fff #fff #808080;
+  position: absolute;
+  box-sizing: border-box;
+  cursor: default;
+}
+.paint-swatch-fg {
+  left: 0;
+  top: 0;
+  z-index: 2;
+  box-shadow: 1px 1px 0 #000;
+  background: #000;
+}
+.paint-swatch-bg {
+  left: 14px;
+  top: 8px;
+  z-index: 1;
+  background: #fff;
+}
+
+/* Palette grid — 2 rows of colors */
+.paint-palette {
+  display: grid;
+  grid-template-columns: repeat(20, 1fr);
+  grid-template-rows: 1fr 1fr;
+  gap: 1px;
+  flex: 1;
+  height: 26px;
+}
+.paint-palette .pcolor {
+  width: 100%;
+  height: 100%;
+  border: 1px solid;
+  border-color: #fff #808080 #808080 #fff;
+  cursor: default;
+  box-sizing: border-box;
+  min-width: 12px;
+}
+.paint-palette .pcolor:hover {
+  border-color: #000;
+  z-index: 1;
+}
+.paint-palette .pcolor:active {
+  border-color: #808080 #fff #fff #808080;
+}
+
+/* STATUSBAR for paint */
+.paint-statusbar {
+  height: 18px;
+  background: #d4d0c8;
+  border-top: 1px solid #808080;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+  font-family: var(--font-pixel), Tahoma, sans-serif;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.paint-status-dividers {
+  display: flex;
+  gap: 0;
+}
+.paint-status-dividers span {
+  padding: 0 8px;
+  border-left: 1px solid #808080;
+  border-right: 1px solid #fff;
+  line-height: 16px;
+}
+#paintStatusLeft {
+  padding: 0 8px;
+  border-right: 1px solid #808080;
+  line-height: 16px;
 }
