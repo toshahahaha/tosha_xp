@@ -1528,15 +1528,27 @@ function ipodRewind() {
     ctx.fillRect(0,0,cw,ch);
 
     if(!mcFocused){
-      ctx.fillStyle='rgba(0,0,0,0.6)';
+      ctx.fillStyle='rgba(0,0,0,0.65)';
       ctx.fillRect(0,0,cw,ch);
+      // Panel
+      const pw=360, ph=130;
+      const px2=cw/2-pw/2, py2=ch/2-ph/2;
+      ctx.fillStyle='rgba(30,30,30,0.92)';
+      ctx.strokeStyle='rgba(255,255,255,0.2)';
+      ctx.lineWidth=1;
+      ctx.fillRect(px2,py2,pw,ph);
+      ctx.strokeRect(px2+0.5,py2+0.5,pw-1,ph-1);
       ctx.fillStyle='#fff';
-      ctx.font='bold 20px "Courier New",monospace';
+      ctx.font='bold 18px "Courier New",monospace';
       ctx.textAlign='center';
-      ctx.fillText('Click to Play',cw/2,ch/2-12);
-      ctx.font='12px "Courier New",monospace';
-      ctx.fillStyle='#ccc';
-      ctx.fillText('WASD: Move  Mouse: Look  Space: Jump  LClick: Break  RClick: Place',cw/2,ch/2+14);
+      ctx.fillText('🎮  Click to Play',cw/2,py2+32);
+      ctx.font='11px "Courier New",monospace';
+      ctx.fillStyle='#aaa';
+      ctx.fillText('WASD · Move        Space · Jump',cw/2,py2+58);
+      ctx.fillText('LClick · Break     RClick · Place',cw/2,py2+76);
+      ctx.fillText('Scroll/1–9 · Select block',cw/2,py2+94);
+      ctx.fillStyle='#ff9944';
+      ctx.fillText('Esc · Release mouse / Pause',cw/2,py2+115);
       ctx.textAlign='left';
     }
   }
@@ -1745,8 +1757,18 @@ function ipodRewind() {
     yaw=0.3; pitch=-0.1;
 
     // Pointer lock for mouse look
+    function lockPointer(){
+      if(canvas.requestPointerLock) canvas.requestPointerLock();
+    }
+    function unlockPointer(){
+      if(document.exitPointerLock) document.exitPointerLock();
+      pointerLocked=false; mcFocused=false;
+      Object.keys(keys).forEach(k=>keys[k]=false);
+      lmb=false; rmb=false;
+    }
+
     canvas.addEventListener('click',()=>{
-      canvas.requestPointerLock && canvas.requestPointerLock();
+      if(!pointerLocked) lockPointer();
     });
     document.addEventListener('pointerlockchange',()=>{
       pointerLocked=(document.pointerLockElement===canvas);
@@ -1760,7 +1782,7 @@ function ipodRewind() {
       pitch=Math.max(-Math.PI*0.49,Math.min(Math.PI*0.49,pitch));
     });
     canvas.addEventListener('mousedown',e=>{
-      if(!pointerLocked){ canvas.requestPointerLock && canvas.requestPointerLock(); return; }
+      if(!pointerLocked){ lockPointer(); return; }
       if(e.button===0){ lmb=true; }
       if(e.button===2){ rmb=true; doPlace(); }
       e.preventDefault();
@@ -1771,15 +1793,22 @@ function ipodRewind() {
     });
     canvas.addEventListener('contextmenu',e=>e.preventDefault());
     canvas.addEventListener('wheel',e=>{
+      if(!pointerLocked) return;
       slot=((slot+(e.deltaY>0?1:-1))+9)%9;
       e.preventDefault();
     },{passive:false});
     document.addEventListener('keydown',e=>{
       const win2=document.getElementById('minecraft');
       if(!win2||!win2.classList.contains('show')) return;
+      // Escape: always unlock and pause
+      if(e.key==='Escape'){
+        unlockPointer();
+        return;
+      }
+      if(!pointerLocked) return;
       keys[e.key.toLowerCase()]=true;
       if(e.key>='1'&&e.key<='9') slot=parseInt(e.key)-1;
-      if(pointerLocked){ e.preventDefault(); e.stopPropagation(); }
+      e.preventDefault(); e.stopPropagation();
     });
     document.addEventListener('keyup',e=>{
       keys[e.key.toLowerCase()]=false;
