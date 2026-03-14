@@ -994,25 +994,29 @@ function ipodRewind() {
   const WX = 64, WY = 64, WZ = 64; // world size in blocks (X, Y=height, Z)
 
   // --- Block IDs ---
-  const B = {AIR:0,GRASS:1,DIRT:2,STONE:3,LOG:4,LEAVES:5,SAND:6,WATER:7,COAL:8,IRON:9,BEDROCK:10,GRAVEL:11,PLANKS:12,GLASS:13};
+  const B = {AIR:0,GRASS:1,DIRT:2,STONE:3,LOG:4,LEAVES:5,SAND:6,WATER:7,COAL:8,IRON:9,BEDROCK:10,GRAVEL:11,PLANKS:12,GLASS:13,FLOWER:14,TALLGRASS:15,SNOW:16,WOOD_PLANK:17};
 
   // Block data: [name, hardness, dropId, sideRGB, topRGB, bottomRGB]
   // RGB as [r,g,b] arrays for fast pixel math
   const BD = [
-    ['Air',      0,        B.AIR,   null,           null,           null          ],
-    ['Grass',    15,       B.DIRT,  [120,85,50],    [90,160,40],    [120,85,50]   ],
-    ['Dirt',     12,       B.DIRT,  [121,85,58],    [121,85,58],    [121,85,58]   ],
-    ['Stone',    40,       B.STONE, [128,128,128],  [128,128,128],  [128,128,128] ],
-    ['Log',      20,       B.PLANKS,[100,76,40],    [156,124,65],   [156,124,65]  ],
-    ['Leaves',   5,        B.AIR,   [58,122,58],    [58,122,58],    [58,122,58]   ],
-    ['Sand',     12,       B.SAND,  [212,196,114],  [212,196,114],  [212,196,114] ],
-    ['Water',    Infinity, B.AIR,   [30,100,220],   [30,100,220],   [30,100,220]  ],
-    ['Coal Ore', 45,       B.COAL,  [128,128,128],  [128,128,128],  [128,128,128] ],
-    ['Iron Ore', 50,       B.IRON,  [128,128,128],  [128,128,128],  [128,128,128] ],
-    ['Bedrock',  Infinity, B.AIR,   [37,37,37],     [37,37,37],     [37,37,37]    ],
-    ['Gravel',   15,       B.GRAVEL,[122,122,120],  [122,122,120],  [122,122,120] ],
-    ['Planks',   18,       B.PLANKS,[185,142,64],   [185,142,64],   [185,142,64]  ],
-    ['Glass',    12,       B.GLASS, [180,220,255],  [180,220,255],  [180,220,255] ],
+    ['Air',       0,        B.AIR,    null,           null,           null          ],
+    ['Grass',     15,       B.DIRT,   [115,88,55],    [88,158,36],    [115,88,55]   ],
+    ['Dirt',      12,       B.DIRT,   [134,96,67],    [134,96,67],    [134,96,67]   ],
+    ['Stone',     40,       B.STONE,  [136,136,136],  [136,136,136],  [136,136,136] ],
+    ['Log',       20,       B.PLANKS, [102,80,44],    [162,130,58],   [162,130,58]  ],
+    ['Leaves',    5,        B.AIR,    [54,118,48],    [54,118,48],    [54,118,48]   ],
+    ['Sand',      12,       B.SAND,   [218,206,124],  [218,206,124],  [218,206,124] ],
+    ['Water',     Infinity, B.AIR,    [32,104,228],   [32,104,228],   [32,104,228]  ],
+    ['Coal Ore',  45,       B.COAL,   [136,136,136],  [136,136,136],  [136,136,136] ],
+    ['Iron Ore',  50,       B.IRON,   [136,136,136],  [136,136,136],  [136,136,136] ],
+    ['Bedrock',   Infinity, B.AIR,    [42,42,42],     [42,42,42],     [42,42,42]    ],
+    ['Gravel',    15,       B.GRAVEL, [126,124,122],  [126,124,122],  [126,124,122] ],
+    ['Planks',    18,       B.PLANKS, [192,150,72],   [192,150,72],   [192,150,72]  ],
+    ['Glass',     12,       B.GLASS,  [190,230,255],  [190,230,255],  [190,230,255] ],
+    ['Flower',    2,        B.AIR,    [220,80,80],    [220,80,80],    [220,80,80]   ],
+    ['Tall Grass',2,        B.AIR,    [74,148,44],    [74,148,44],    [74,148,44]   ],
+    ['Snow',      8,        B.AIR,    [242,246,248],  [242,246,248],  [242,246,248] ],
+    ['Wood Plank',18,       B.PLANKS, [192,150,72],   [192,150,72],   [192,150,72]  ],
   ];
 
   const bName = i => BD[i][0];
@@ -1059,6 +1063,11 @@ function ipodRewind() {
   // Drag-to-look (Mac/trackpad fallback — works without pointer lock)
   let dragging=false, lastMouseX=0, lastMouseY=0;
 
+  // --- Creative / Fly mode ---
+  let flyMode=true;          // start in creative fly mode
+  let flySpeed=10;
+  let lastSpaceTap=0;        // for double-tap space detection
+
   // --- Hotbar ---
   let hotbar=[
     {id:B.PLANKS,ct:64},{id:B.DIRT,ct:64},{id:B.STONE,ct:64},
@@ -1100,61 +1109,129 @@ function ipodRewind() {
     const seed=Math.random()*9999|0;
     world=new Uint8Array(WX*WY*WZ);
 
-    // 2D heightmap for each (x,z) column
+    // --- Heightmap with multiple terrain layers ---
+    // y=0 is TOP of world (sky), y increases downward
+    // Surface is around y=18-36; bedrock at y=WY-1=63
+    const WATER_Y = 30; // water surface level
+    const BASE_Y  = 28; // average ground level
     const hmap = new Int32Array(WX*WZ);
-    const WATER_Y = 28;
+
     for(let x=0;x<WX;x++){
       for(let z=0;z<WZ;z++){
-        hmap[z*WX+x] = Math.round(22 + fbm2(x/24, z/24, seed)*10);
+        // Layered noise: large hills + medium detail + small bumps
+        const large  = fbm2(x/32, z/32, seed,      4) * 14; // big hills
+        const medium = fbm2(x/12, z/12, seed+1000, 3) * 5;  // medium detail
+        const small  = fbm2(x/5,  z/5,  seed+2000, 2) * 2;  // surface roughness
+        hmap[z*WX+x] = Math.round(BASE_Y + large + medium + small);
       }
     }
 
-    // Fill voxels
+    // --- Fill voxels ---
     for(let x=0;x<WX;x++){
       for(let z=0;z<WZ;z++){
-        const surf = hmap[z*WX+x];
+        const surf = Math.max(2, Math.min(WY-4, hmap[z*WX+x]));
+        const isBeach = surf >= WATER_Y-1 && surf <= WATER_Y+1;
+        const isHigh  = surf < BASE_Y-6; // elevated / snowy peaks
+
         for(let y=0;y<WY;y++){
           let id;
           if(y===WY-1) id=B.BEDROCK;
-          else if(y>surf) id=B.AIR;
+          else if(y < surf) id=B.AIR;       // above surface = air
           else if(y===surf){
-            id = (surf<=WATER_Y) ? B.SAND : B.GRASS;
-          } else if(y>surf-4) id=B.DIRT;
+            if(surf > WATER_Y)        id=B.AIR;   // will be set below
+            else if(isBeach)          id=B.SAND;
+            else if(isHigh)           id=B.SNOW;
+            else                      id=B.AIR;   // grass below
+          }
+          else if(y > surf && y <= WATER_Y) id=B.WATER; // water fill
+          else if(y===surf+1||y===surf+2&&y>WATER_Y){
+            // Below surface
+            if(isBeach)               id=B.SAND;
+            else if(isHigh)           id=B.STONE;
+            else                      id=B.GRASS; // <- surface block
+          }
+          else if(y > surf+1 && y <= surf+4) id=B.DIRT;
           else {
-            const n = noise2(x*0.37+y*0.13,z*0.29,seed+500);
-            if(n>0.92) id=B.COAL;
-            else if(n>0.89) id=B.IRON;
-            else if(n>0.87) id=B.GRAVEL;
-            else id=B.STONE;
+            const n=noise2(x*0.31+y*0.19, z*0.27, seed+500);
+            if(n>0.93)      id=B.COAL;
+            else if(n>0.90) id=B.IRON;
+            else if(n>0.88) id=B.GRAVEL;
+            else            id=B.STONE;
           }
           setB(x,y,z,id);
         }
-        // Water in depressions
-        for(let y=surf+1;y<=WATER_Y;y++) setB(x,y,z,B.WATER);
       }
     }
 
-    // Trees
+    // Correct pass: set actual surface block at surf+1 (first solid below air)
+    for(let x=0;x<WX;x++){
+      for(let z=0;z<WZ;z++){
+        const surf=Math.max(2,Math.min(WY-4,hmap[z*WX+x]));
+        if(surf > WATER_Y){
+          // Surface is above water — place grass/snow/sand
+          const isBeach = surf<=WATER_Y+2;
+          const isHigh  = surf < BASE_Y-6;
+          const surfBlock = isBeach ? B.SAND : isHigh ? B.SNOW : B.GRASS;
+          setB(x, surf+1, z, surfBlock);
+          // Dirt layer beneath
+          for(let d=2;d<=4;d++) if(getB(x,surf+d,z)!==B.STONE&&getB(x,surf+d,z)!==B.BEDROCK) setB(x,surf+d,z,B.DIRT);
+        }
+      }
+    }
+
+    // --- Trees (denser, varied types) ---
+    // Forest biome clustering
     for(let x=3;x<WX-3;x++){
       for(let z=3;z<WZ-3;z++){
-        const surf=hmap[z*WX+x];
-        if(surf>WATER_Y && noise2(x*3.7,z*2.9,seed+77)>0.78){
-          placeTree3D(x,surf,z);
+        const surf=Math.max(2,Math.min(WY-4,hmap[z*WX+x]));
+        const isGrass = getB(x,surf+1,z)===B.GRASS;
+        if(!isGrass) continue;
+        // Forest cluster noise — groups trees together naturally
+        const forestDensity = fbm2(x/8, z/8, seed+3000, 2);
+        const treeNoise = noise2(x*5.3, z*4.7, seed+77);
+        if(forestDensity > 0.55 && treeNoise > 0.62){
+          placeTree3D(x, surf+1, z, seed);
         }
+      }
+    }
+
+    // --- Flowers and tall grass scattered on grass surface ---
+    for(let x=1;x<WX-1;x++){
+      for(let z=1;z<WZ-1;z++){
+        const surf=Math.max(2,Math.min(WY-4,hmap[z*WX+x]));
+        if(getB(x,surf+1,z)!==B.GRASS) continue;
+        const n=noise2(x*7.3,z*6.1,seed+9000);
+        const aboveSurf=surf; // surf is air, surf+1 is grass block, surf is where to place deco
+        if(n>0.88)      setB(x, surf,   z, B.FLOWER);    // flower on top
+        else if(n>0.80) setB(x, surf,   z, B.TALLGRASS); // tall grass on top
       }
     }
   }
 
-  function placeTree3D(x,sy,z){
-    const h=4+Math.floor(noise2(x*0.71,z*0.53,42)*3);
-    for(let dy=1;dy<=h;dy++) setB(x,sy-dy,z,B.LOG);
-    const ty=sy-h;
-    for(let dy=-1;dy<=2;dy++){
-      const r=dy<1?2:1;
+  function placeTree3D(x, surfY, z, seed){
+    // surfY = the grass block y index (y increases downward)
+    // Trunk goes UP = decreasing y
+    const h = 4 + Math.floor(noise2(x*1.71, z*1.53, seed+42) * 3); // height 4-6
+    // Place trunk (surfY-1 up to surfY-h, in y-decreasing direction)
+    for(let i=1;i<=h;i++) setB(x, surfY-i, z, B.LOG);
+    // Leaf canopy — centered at top of trunk
+    const topY = surfY - h;
+    // Layer pattern like real Minecraft oak: wide at bottom, narrow at top
+    const layers = [
+      {dy:0,  r:2},  // bottom of canopy
+      {dy:-1, r:2},  // middle wide
+      {dy:-2, r:1},  // top narrow
+      {dy:-3, r:1},  // tip
+    ];
+    for(const {dy,r} of layers){
       for(let dx=-r;dx<=r;dx++){
         for(let dz=-r;dz<=r;dz++){
-          if(Math.abs(dx)+Math.abs(dz)<=r+1&&getB(x+dx,ty+dy,z+dz)===B.AIR)
-            setB(x+dx,ty+dy,z+dz,B.LEAVES);
+          // Round corners (remove corners for r=2)
+          if(r===2 && Math.abs(dx)===2 && Math.abs(dz)===2) continue;
+          const lx=x+dx, lz=z+dz, ly=topY+dy;
+          if(lx>=0&&lx<WX&&lz>=0&&lz<WZ&&ly>=0&&ly<WY){
+            if(getB(lx,ly,lz)===B.AIR) setB(lx,ly,lz,B.LEAVES);
+          }
         }
       }
     }
@@ -1299,57 +1376,72 @@ function ipodRewind() {
   }
 
   function physStep(dt){
-    pvy -= GRAVITY*dt;
-    if(pvy<-50) pvy=-50;
-
-    const inWater = getB(px|0, (py+EYE_H*0.5)|0, pz|0)===B.WATER;
-    if(inWater){ pvy*=0.88; pvx*=0.85; pvz*=0.85; }
-
-    // Directional input
-    const spd = (keys['control']||keys['controlleft']) ? SPRINT_SPEED : WALK_SPEED;
-    const fw = (keys['w']||keys['arrowup']) ? 1 : (keys['s']||keys['arrowdown']) ? -1 : 0;
-    const st = (keys['d']||keys['arrowright']) ? 1 : (keys['a']||keys['arrowleft']) ? -1 : 0;
     const sinY=Math.sin(yaw), cosY=Math.cos(yaw);
-    // Forward = (sin(yaw), cos(yaw)), Right = (cos(yaw), -sin(yaw))
-    pvx = (sinY*fw + cosY*st) * spd;
-    pvz = (cosY*fw - sinY*st) * spd;
-    if(inWater && (keys[' '])) pvy=3;
-    if(!inWater && keys[' '] && onGround){ pvy=JUMP_VEL; onGround=false; }
+    const cosPitch=Math.cos(pitch), sinPitch=Math.sin(pitch);
+    const spd = (keys['control']||keys['controlleft']||keys['shift']||keys['shiftleft']) && !flyMode
+                  ? SPRINT_SPEED : flyMode ? flySpeed : WALK_SPEED;
+    const fw = (keys['w']||keys['arrowup'])    ? 1 : (keys['s']||keys['arrowdown'])  ? -1 : 0;
+    const st = (keys['d']||keys['arrowright']) ? 1 : (keys['a']||keys['arrowleft'])  ? -1 : 0;
 
-    // Move and collide
-    const HW=PLAYER_W/2;
-    // X
-    px+=pvx*dt;
-    for(let dy2=0;dy2<PLAYER_H;dy2+=0.5){
-      if(aabbSolid(px-HW, py+dy2, pz)||aabbSolid(px+HW, py+dy2, pz)){
-        px-=pvx*dt; pvx=0; break;
-      }
-    }
-    // Z
-    pz+=pvz*dt;
-    for(let dy2=0;dy2<PLAYER_H;dy2+=0.5){
-      if(aabbSolid(px-HW, py+dy2, pz-HW)||aabbSolid(px+HW, py+dy2, pz+HW)){
-        pz-=pvz*dt; pvz=0; break;
-      }
-    }
-    // Y
-    py+=pvy*dt;
-    onGround=false;
-    if(pvy<0){
-      if(aabbSolid(px,py,pz)||aabbSolid(px+HW,py,pz)||aabbSolid(px-HW,py,pz)||
-         aabbSolid(px,py,pz+HW)||aabbSolid(px,py,pz-HW)){
-        py-=pvy*dt; pvy=0; onGround=true;
-      }
+    if(flyMode){
+      // ---- Creative fly: no gravity, full 3D movement ----
+      // Horizontal movement in yaw direction (ignore pitch for WASD so you don't fly into sky)
+      pvx = (sinY*fw + cosY*st) * spd;
+      pvz = (cosY*fw - sinY*st) * spd;
+      // Vertical: Space=up, Shift=down
+      const upDown = (keys[' ']) ? 1 : (keys['shift']||keys['shiftleft']||keys['shiftright']) ? -1 : 0;
+      pvy = upDown * spd;
+
+      // Apply movement (no collision in fly mode — ghost through)
+      px += pvx*dt; py += pvy*dt; pz += pvz*dt;
+
+      // Clamp world bounds
+      px=Math.max(0.3,Math.min(WX-0.3,px));
+      pz=Math.max(0.3,Math.min(WZ-0.3,pz));
+      py=Math.max(-10,Math.min(WY+10,py));
     } else {
-      if(aabbSolid(px,py+PLAYER_H,pz)){
-        py-=pvy*dt; pvy=0;
+      // ---- Survival: gravity + collision ----
+      pvy -= GRAVITY*dt;
+      if(pvy<-50) pvy=-50;
+
+      const inWater = getB(px|0, (py+EYE_H*0.5)|0, pz|0)===B.WATER;
+      if(inWater){ pvy*=0.88; pvx*=0.85; pvz*=0.85; }
+
+      pvx = (sinY*fw + cosY*st) * spd;
+      pvz = (cosY*fw - sinY*st) * spd;
+      if(inWater && keys[' ']) pvy=3;
+      if(!inWater && keys[' '] && onGround){ pvy=JUMP_VEL; onGround=false; }
+
+      const HW=PLAYER_W/2;
+      px+=pvx*dt;
+      for(let dy2=0;dy2<PLAYER_H;dy2+=0.5){
+        if(aabbSolid(px-HW,py+dy2,pz)||aabbSolid(px+HW,py+dy2,pz)){
+          px-=pvx*dt; pvx=0; break;
+        }
       }
+      pz+=pvz*dt;
+      for(let dy2=0;dy2<PLAYER_H;dy2+=0.5){
+        if(aabbSolid(px-HW,py+dy2,pz-HW)||aabbSolid(px+HW,py+dy2,pz+HW)){
+          pz-=pvz*dt; pvz=0; break;
+        }
+      }
+      py+=pvy*dt;
+      onGround=false;
+      if(pvy<0){
+        if(aabbSolid(px,py,pz)||aabbSolid(px+HW,py,pz)||aabbSolid(px-HW,py,pz)||
+           aabbSolid(px,py,pz+HW)||aabbSolid(px,py,pz-HW)){
+          py-=pvy*dt; pvy=0; onGround=true;
+        }
+      } else {
+        if(aabbSolid(px,py+PLAYER_H,pz)){
+          py-=pvy*dt; pvy=0;
+        }
+      }
+      px=Math.max(0.5,Math.min(WX-0.5,px));
+      pz=Math.max(0.5,Math.min(WZ-0.5,pz));
+      if(py<0){py=0;pvy=0;}
+      if(py>WY-2){py=WY-2;pvy=0;}
     }
-    // Clamp world
-    px=Math.max(0.5,Math.min(WX-0.5,px));
-    pz=Math.max(0.5,Math.min(WZ-0.5,pz));
-    if(py<0){py=0;pvy=0;}
-    if(py>WY-2){py=WY-2;pvy=0;}
   }
 
   // =============== BLOCK INTERACTION ===============
@@ -1578,17 +1670,19 @@ function ipodRewind() {
       ctx.fillStyle='#fff';
       ctx.font='bold 18px "Courier New",monospace';
       ctx.textAlign='center';
-      ctx.fillText('🎮  Click to Play',cw/2,py2+32);
+      ctx.fillText('🎮  Click to Play',cw/2,py2+30);
       ctx.font='11px "Courier New",monospace';
       ctx.fillStyle='#aaa';
-      ctx.fillText('WASD · Move               Space · Jump',cw/2,py2+56);
-      ctx.fillText('Click + Drag · Look around',cw/2,py2+73);
-      ctx.fillText('LClick · Break block      RClick · Place',cw/2,py2+90);
-      ctx.fillText('Scroll / 1–9 · Select hotbar slot',cw/2,py2+107);
+      ctx.fillText('WASD · Move                Space/Shift · Fly Up/Down',cw/2,py2+52);
+      ctx.fillText('Click + Drag · Look around',cw/2,py2+68);
+      ctx.fillText('LClick · Break block       RClick · Place block',cw/2,py2+84);
+      ctx.fillText('Scroll / 1–9 · Select hotbar slot',cw/2,py2+100);
+      ctx.fillStyle='#55FFFF';
+      ctx.fillText('✈ Double-tap Space or F · Toggle creative fly',cw/2,py2+117);
       ctx.fillStyle='#44ccff';
-      ctx.fillText('✓ Mac & Trackpad friendly — no lock needed',cw/2,py2+125);
+      ctx.fillText('✓ Mac & Trackpad friendly',cw/2,py2+132);
       ctx.fillStyle='#ff9944';
-      ctx.fillText('Esc · Pause',cw/2,py2+142);
+      ctx.fillText('Esc · Pause',cw/2,py2+147);
       ctx.textAlign='left';
     } else {
       // Pause button (top-right of canvas, always visible while playing)
@@ -1719,12 +1813,33 @@ function ipodRewind() {
       ctx.restore();
     }
 
-    // Day/night indicator (tiny)
+    // Day/night indicator (top-left)
     ctx.font='9px monospace';
-    ctx.fillStyle='rgba(255,255,255,0.5)';
+    ctx.fillStyle='rgba(255,255,255,0.55)';
     ctx.textAlign='left';
     const timeStr = dayT<0.25||dayT>0.83 ? '🌙 Night' : dayT<0.38||dayT>0.62 ? '🌅 Dusk/Dawn' : '☀ Day';
-    ctx.fillText(timeStr, 6, 16);
+    ctx.fillText(timeStr, 6, 14);
+
+    // Fly mode indicator
+    if(flyMode){
+      const fwLabel='✈ CREATIVE FLY';
+      ctx.font='bold 10px "Courier New",monospace';
+      const fw2=ctx.measureText(fwLabel).width;
+      ctx.fillStyle='rgba(0,0,0,0.45)';
+      ctx.fillRect(cw/2-fw2/2-5, 4, fw2+10, 16);
+      ctx.fillStyle='#55FFFF';
+      ctx.textAlign='center';
+      ctx.shadowColor='#000'; ctx.shadowBlur=3;
+      ctx.fillText(fwLabel, cw/2, 16);
+      ctx.shadowBlur=0;
+      ctx.textAlign='left';
+      // Controls reminder
+      ctx.font='8px monospace';
+      ctx.fillStyle='rgba(255,255,255,0.4)';
+      ctx.textAlign='center';
+      ctx.fillText('Space=Up  Shift=Down  F=Toggle fly', cw/2, 28);
+      ctx.textAlign='left';
+    }
 
     ctx.textAlign='left';
   }
@@ -1799,18 +1914,25 @@ function ipodRewind() {
     generateWorld();
     bakeTextures();
 
-    // Spawn player on surface — search top-down to find the first solid block
+    // Spawn player on surface — scan top-down (y=0 is sky, increasing y = deeper)
+    // Find first solid block that has air above it
     const spawnX=Math.floor(WX/2), spawnZ=Math.floor(WZ/2);
-    let spawnY = 2; // fallback
-    for(let y=1;y<WY-1;y++){
-      if(bSolid(getB(spawnX,y,spawnZ)) && !bSolid(getB(spawnX,y-1,spawnZ))){
-        spawnY = y - 1; // stand on top of this block (feet one block above)
+    let spawnSurfY = 30; // fallback guess
+    for(let y=2;y<WY-2;y++){
+      const above = getB(spawnX, y-1, spawnZ);
+      const here  = getB(spawnX, y,   spawnZ);
+      if(!bSolid(above) && bSolid(here)){
+        spawnSurfY = y; // y is the surface block, y-1 is air above
         break;
       }
     }
-    px=spawnX+0.5; py=spawnY - PLAYER_H - 0.01; pz=spawnZ+0.5;
-    pvx=0; pvy=0; pvz=0; onGround=false;
-    yaw=0.3; pitch=0.0;
+    // Place player feet so they stand ON TOP of the surface block
+    // Surface block is at spawnSurfY, player feet = spawnSurfY-1 (one block above)
+    px = spawnX + 0.5;
+    py = spawnSurfY - 1 - 0.01; // feet at y just above surface block
+    pz = spawnZ + 0.5;
+    pvx=0; pvy=0; pvz=0; onGround=true;
+    yaw=0.5; pitch=-0.15; // look slightly down at terrain
 
     // ---- Pointer lock (enhancement, not required) ----
     function tryLockPointer(){
@@ -1924,8 +2046,24 @@ function ipodRewind() {
         return;
       }
       if(!mcFocused) return;
-      keys[e.key.toLowerCase()]=true;
+      const k=e.key.toLowerCase();
+
+      // Double-tap Space = toggle fly mode (like Minecraft creative)
+      if(e.key===' '||e.key==='Spacebar'){
+        const now=performance.now();
+        if(now-lastSpaceTap<300){
+          flyMode=!flyMode;
+          pvy=0; // stop vertical momentum when switching
+          lastSpaceTap=0;
+        } else {
+          lastSpaceTap=now;
+        }
+      }
+
+      keys[k]=true;
       if(e.key>='1'&&e.key<='9') slot=parseInt(e.key)-1;
+      // F key: toggle fly shortcut
+      if(k==='f') { flyMode=!flyMode; pvy=0; }
       e.preventDefault(); e.stopPropagation();
     });
     document.addEventListener('keyup',e=>{
