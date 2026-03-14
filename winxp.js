@@ -343,6 +343,57 @@ let ipodPlaying = false;
 
 function $(id) { return document.getElementById(id); }
 
+// ---- Playlist ----
+const IPOD_PLAYLIST = [
+  {
+    src:    "iPod Touch.mp3",
+    title:  "iPod Touch",
+    artist: "Ninajirachi",
+    album:  "I Love My Computer",
+    art:    "https://i1.sndcdn.com/artworks-IXsnvZeztxgQoL29-INTj2g-t500x500.png"
+  },
+  {
+    src:    "That Green Gentleman.mp3",
+    title:  "That Green Gentleman (Things Have Changed)",
+    artist: "Panic! at the Disco",
+    album:  "Pretty. Odd.",
+    art:    "https://upload.wikimedia.org/wikipedia/en/4/4d/Panicatthedisco-prettyodd.jpg"
+  },
+];
+let ipodIndex = 0;
+
+function ipodLoadTrack(idx, autoplay) {
+  ipodIndex = ((idx % IPOD_PLAYLIST.length) + IPOD_PLAYLIST.length) % IPOD_PLAYLIST.length;
+  const track = IPOD_PLAYLIST[ipodIndex];
+  const audio = $("ipod-audio");
+  if (!audio) return;
+
+  audio.pause();
+  audio.src = track.src;
+  audio.load();
+
+  // Update display
+  const titleEl  = document.querySelector("#ipod-marquee span");
+  const artistEl = document.querySelector(".ipod-song-artist");
+  const albumEl  = document.querySelector(".ipod-song-album");
+  const artEl    = document.querySelector(".ipod-cover");
+  if (titleEl)  titleEl.textContent  = track.title;
+  if (artistEl) artistEl.textContent = track.artist;
+  if (albumEl)  albumEl.textContent  = track.album;
+  if (artEl)    artEl.src            = track.art;
+
+  ipodSyncUI();
+
+  if (autoplay) {
+    audio.play()
+      .then(() => { ipodPlaying = true; ipodSetPlayingUI(true); })
+      .catch(err => console.warn("Audio play blocked:", err));
+  } else {
+    ipodPlaying = false;
+    ipodSetPlayingUI(false);
+  }
+}
+
 function formatIpodTime(sec) {
   if (!Number.isFinite(sec) || sec < 0) sec = 0;
   const m = Math.floor(sec / 60);
@@ -358,18 +409,15 @@ function ipodSyncUI() {
 
   if (!audio) return;
 
-  // Times
   if (elapsed) elapsed.textContent = formatIpodTime(audio.currentTime || 0);
-
   const dur = audio.duration;
   if (total) total.textContent = Number.isFinite(dur) ? formatIpodTime(dur) : "0:00";
-
-  // Progress
-  const pct = (Number.isFinite(dur) && dur > 0)
-    ? (audio.currentTime / dur) * 100
-    : 0;
-
+  const pct = (Number.isFinite(dur) && dur > 0) ? (audio.currentTime / dur) * 100 : 0;
   if (fill) fill.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+
+  // Track counter (e.g. "1 of 2")
+  const counter = $("ipod-track-counter");
+  if (counter) counter.textContent = `${ipodIndex + 1} of ${IPOD_PLAYLIST.length}`;
 }
 
 function ipodSetPlayingUI(isPlaying) {
@@ -380,22 +428,12 @@ function ipodSetPlayingUI(isPlaying) {
 
 function ipodPlayPause() {
   const audio = $("ipod-audio");
-  if (!audio) {
-    console.warn("Missing #ipod-audio element");
-    return;
-  }
+  if (!audio) { console.warn("Missing #ipod-audio element"); return; }
 
-  // If paused -> play, else pause
   if (audio.paused) {
     audio.play()
-      .then(() => {
-        ipodPlaying = true;
-        ipodSetPlayingUI(true);
-      })
-      .catch((err) => {
-        // Autoplay policies: user interaction should allow play, but handle anyway.
-        console.warn("Audio play blocked:", err);
-      });
+      .then(() => { ipodPlaying = true; ipodSetPlayingUI(true); })
+      .catch(err => console.warn("Audio play blocked:", err));
   } else {
     audio.pause();
     ipodPlaying = false;
@@ -404,27 +442,22 @@ function ipodPlayPause() {
 }
 
 function ipodSkip() {
-  const audio = $("ipod-audio");
-  if (!audio) return;
-
-  // "Next" behavior: restart track
-  audio.currentTime = 0;
-  ipodSyncUI();
-
-  // Keep playing if it was playing
-  if (!audio.paused) {
-    audio.play().catch(() => {});
-    ipodSetPlayingUI(true);
-  }
+  // Advance to next track, keep playing if already playing
+  const wasPlaying = !$("ipod-audio").paused || ipodPlaying;
+  ipodLoadTrack(ipodIndex + 1, wasPlaying);
 }
 
 function ipodRewind() {
   const audio = $("ipod-audio");
   if (!audio) return;
-
-  // "Previous" behavior: jump back to start
-  audio.currentTime = 0;
-  ipodSyncUI();
+  // If more than 3 seconds in, restart current track; else go to previous
+  if (audio.currentTime > 3) {
+    audio.currentTime = 0;
+    ipodSyncUI();
+  } else {
+    const wasPlaying = !audio.paused || ipodPlaying;
+    ipodLoadTrack(ipodIndex - 1, wasPlaying);
+  }
 }
 
 // Keep UI updated from actual audio events
@@ -434,16 +467,13 @@ function ipodRewind() {
 
   audio.addEventListener("loadedmetadata", ipodSyncUI);
   audio.addEventListener("timeupdate", ipodSyncUI);
-  audio.addEventListener("play", () => { ipodPlaying = true; ipodSetPlayingUI(true); });
-  audio.addEventListener("pause", () => { ipodPlaying = false; ipodSetPlayingUI(false); });
-  audio.addEventListener("ended", () => {
-    ipodPlaying = false;
-    ipodSetPlayingUI(false);
-    audio.currentTime = 0;
-    ipodSyncUI();
+  audio.addEventListener("play",   () => { ipodPlaying = true;  ipodSetPlayingUI(true);  });
+  audio.addEventListener("pause",  () => { ipodPlaying = false; ipodSetPlayingUI(false); });
+  audio.addEventListener("ended",  () => {
+    // Auto-advance to next track
+    ipodLoadTrack(ipodIndex + 1, true);
   });
 
-  // Initial paint
   ipodSyncUI();
 })();
 

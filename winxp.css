@@ -1329,6 +1329,14 @@ button, input, textarea, select, label {
   font-style: italic;
 }
 
+.ipod-track-counter {
+  font-size: 7px;
+  color: #7a8a9a;
+  margin-top: 2px;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.5px;
+}
+
 /* Progress bar */
 .ipod-progress-wrap {
   display: flex;
