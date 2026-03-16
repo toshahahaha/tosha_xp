@@ -338,13 +338,11 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') toggleStartMenu(false);
 });
 
-// ===================== IPOD PLAYER (REAL AUDIO) =====================
-let ipodPlaying = false;
-
+// ===================== IPOD PLAYER =====================
 function $(id) { return document.getElementById(id); }
 
-// ---- Playlist ----
-const IPOD_PLAYLIST = [
+// ─── Song library ───────────────────────────────────────
+const IPOD_SONGS = [
   {
     src:    "iPod Touch.mp3",
     title:  "iPod Touch",
@@ -354,17 +352,236 @@ const IPOD_PLAYLIST = [
   },
   {
     src:    "That Green Gentleman.mp3",
-    title:  "That Green Gentleman (Things Have Changed)",
+    title:  "That Green Gentleman",
     artist: "Panic! at the Disco",
     album:  "Pretty. Odd.",
     art:    "https://upload.wikimedia.org/wikipedia/en/4/4d/Panicatthedisco-prettyodd.jpg"
   },
 ];
-let ipodIndex = 0;
 
-function ipodLoadTrack(idx, autoplay) {
-  ipodIndex = ((idx % IPOD_PLAYLIST.length) + IPOD_PLAYLIST.length) % IPOD_PLAYLIST.length;
-  const track = IPOD_PLAYLIST[ipodIndex];
+// ─── Playlists ──────────────────────────────────────────
+// Each playlist holds indices into IPOD_SONGS
+const IPOD_PLAYLISTS = [
+  { name: "now",  songs: [0] },
+  { name: "then", songs: [1] },
+];
+
+// ─── Playback state ─────────────────────────────────────
+let ipodPlaying  = false;
+let ipodSongIdx  = 0;          // index into IPOD_SONGS (current track)
+let ipodQueue    = [0, 1];     // ordered list of song indices to play through
+let ipodQueuePos = 0;          // position inside ipodQueue
+
+// ─── Navigation state ───────────────────────────────────
+// Stack of {view, cursorIndex} so MENU always goes back correctly
+const ipodNavStack = [];
+let ipodView     = 'mainmenu';   // current visible view id
+let ipodCursor   = 0;            // highlighted row index in current list
+
+// ─── View definitions (what list each view shows) ───────
+// Each entry: { listId, items fn, parentView }
+function ipodGetItems(view, extra) {
+  switch (view) {
+    case 'mainmenu':   return ['Music', 'Now Playing', 'Settings'];
+    case 'music':      return ['Playlists', 'All Songs'];
+    case 'playlists':  return IPOD_PLAYLISTS.map(p => p.name);
+    case 'allsongs':   return IPOD_SONGS.map(s => s.title);
+    case 'playlistsongs': {
+      const pl = IPOD_PLAYLISTS[extra];
+      return pl ? pl.songs.map(i => IPOD_SONGS[i].title) : [];
+    }
+    case 'settings':   return ['Repeat: Off', 'Shuffle: Off', 'Backlight: Always On'];
+    default: return [];
+  }
+}
+
+// ─── Render a view's list ────────────────────────────────
+function ipodRenderList(view, extra) {
+  const listIdMap = {
+    mainmenu: 'ipod-list-mainmenu',
+    music:    'ipod-list-music',
+    playlists:'ipod-list-playlists',
+    allsongs: 'ipod-list-allsongs',
+    playlistsongs: 'ipod-list-playlistsongs',
+  };
+  const listId = listIdMap[view];
+  if (!listId) return;
+  const ul = $(listId);
+  if (!ul) return;
+
+  const items = ipodGetItems(view, extra);
+  // Settings items are static — don't re-render
+  if (view === 'settings') return;
+
+  ul.innerHTML = '';
+  items.forEach((label, i) => {
+    const li = document.createElement('li');
+    li.className = 'ipod-menu-item' + (i === ipodCursor ? ' ipod-menu-item--active' : '');
+    const isStatic = (view === 'settings');
+    if (!isStatic) {
+      li.innerHTML = `${label} <span class="ipod-arrow">›</span>`;
+      // Songs in lists don't show arrow if they're leaf items
+      if (view === 'allsongs' || view === 'playlistsongs') {
+        li.innerHTML = label;
+        if (ipodQueue.length > 0) {
+          const globalIdx = view === 'allsongs' ? i :
+            (IPOD_PLAYLISTS[extra] ? IPOD_PLAYLISTS[extra].songs[i] : i);
+          if (globalIdx === ipodSongIdx && ipodPlaying) {
+            li.innerHTML = '♪ ' + label;
+          }
+        }
+      }
+    } else {
+      li.textContent = label;
+      li.classList.add('ipod-menu-item--static');
+    }
+    ul.appendChild(li);
+  });
+}
+
+// ─── Show a view ────────────────────────────────────────
+function ipodShowView(viewName, extra) {
+  // Hide all views
+  document.querySelectorAll('.ipod-view').forEach(el => el.style.display = 'none');
+  // Show target
+  const el = $('ipod-view-' + viewName);
+  if (el) el.style.display = '';
+  ipodView = viewName;
+
+  // Update playlist header if needed
+  if (viewName === 'playlistsongs' && extra !== undefined) {
+    const hdr = $('ipod-playlist-header');
+    if (hdr) hdr.textContent = IPOD_PLAYLISTS[extra].name;
+  }
+
+  // Render the list with the current cursor
+  ipodRenderList(viewName, extra);
+
+  // Update status bar title
+  const titles = {
+    mainmenu: 'iPod', music: 'Music', playlists: 'Playlists',
+    playlistsongs: extra !== undefined ? IPOD_PLAYLISTS[extra]?.name : 'Playlist',
+    allsongs: 'All Songs', nowplaying: 'Now Playing', settings: 'Settings'
+  };
+  const stEl = $('ipod-status-title');
+  if (stEl) stEl.textContent = titles[viewName] || 'iPod';
+
+  // Update window statusbar
+  const sb = $('ipod-statusbar');
+  if (sb) {
+    if (viewName === 'nowplaying') {
+      const t = IPOD_SONGS[ipodSongIdx];
+      sb.textContent = `♪ ${t.title} — ${t.artist}`;
+    } else {
+      sb.textContent = `iPod — ${titles[viewName] || ''}`;
+    }
+  }
+}
+
+// ─── Update cursor highlight in current list ─────────────
+function ipodUpdateCursor(view, extra) {
+  const listIdMap = {
+    mainmenu: 'ipod-list-mainmenu', music: 'ipod-list-music',
+    playlists:'ipod-list-playlists', allsongs:'ipod-list-allsongs',
+    playlistsongs:'ipod-list-playlistsongs', settings:'ipod-list-settings',
+  };
+  const ul = $(listIdMap[view]);
+  if (!ul) return;
+  const items = ul.querySelectorAll('.ipod-menu-item');
+  items.forEach((li, i) => {
+    li.classList.toggle('ipod-menu-item--active', i === ipodCursor);
+  });
+}
+
+// ─── Scroll up/down ─────────────────────────────────────
+function ipodScrollDown() {
+  const items = ipodGetItems(ipodView, ipodNavStack[ipodNavStack.length - 1]?.extra);
+  if (!items.length) return;
+  ipodCursor = (ipodCursor + 1) % items.length;
+  ipodUpdateCursor(ipodView, ipodNavStack[ipodNavStack.length - 1]?.extra);
+}
+function ipodScrollUp() {
+  const items = ipodGetItems(ipodView, ipodNavStack[ipodNavStack.length - 1]?.extra);
+  if (!items.length) return;
+  ipodCursor = (ipodCursor - 1 + items.length) % items.length;
+  ipodUpdateCursor(ipodView, ipodNavStack[ipodNavStack.length - 1]?.extra);
+}
+
+// ─── SELECT (center button) ──────────────────────────────
+function ipodSelect() {
+  const extra = ipodNavStack[ipodNavStack.length - 1]?.extra;
+
+  if (ipodView === 'nowplaying') {
+    ipodPlayPause(); return;
+  }
+
+  // Navigate into sub-views
+  const transitions = {
+    mainmenu: ['music', 'nowplaying', 'settings'],
+    music:    ['playlists', 'allsongs'],
+    playlists: null,  // handled below
+    playlistsongs: null,
+    allsongs: null,
+  };
+
+  if (ipodView === 'mainmenu') {
+    const dest = ['music','nowplaying','settings'][ipodCursor];
+    if (dest) {
+      ipodNavStack.push({ view: ipodView, cursor: ipodCursor, extra });
+      ipodCursor = 0;
+      ipodShowView(dest);
+    }
+  } else if (ipodView === 'music') {
+    const dest = ['playlists','allsongs'][ipodCursor];
+    if (dest) {
+      ipodNavStack.push({ view: ipodView, cursor: ipodCursor, extra });
+      ipodCursor = 0;
+      ipodShowView(dest);
+    }
+  } else if (ipodView === 'playlists') {
+    // Enter a specific playlist
+    const plIdx = ipodCursor;
+    ipodNavStack.push({ view: ipodView, cursor: ipodCursor, extra });
+    ipodCursor = 0;
+    ipodShowView('playlistsongs', plIdx);
+  } else if (ipodView === 'playlistsongs') {
+    // Play selected song from playlist
+    const pl = IPOD_PLAYLISTS[extra];
+    if (!pl) return;
+    const songIdx = pl.songs[ipodCursor];
+    ipodQueue    = pl.songs.slice(); // set queue to this playlist
+    ipodQueuePos = ipodCursor;
+    ipodLoadTrack(songIdx, true);
+    // Navigate to Now Playing
+    ipodNavStack.push({ view: ipodView, cursor: ipodCursor, extra });
+    ipodCursor = 0;
+    ipodShowView('nowplaying');
+  } else if (ipodView === 'allsongs') {
+    const songIdx = ipodCursor;
+    ipodQueue    = IPOD_SONGS.map((_, i) => i);
+    ipodQueuePos = ipodCursor;
+    ipodLoadTrack(songIdx, true);
+    ipodNavStack.push({ view: ipodView, cursor: ipodCursor, extra });
+    ipodCursor = 0;
+    ipodShowView('nowplaying');
+  } else if (ipodView === 'settings') {
+    // settings items are static — no action
+  }
+}
+
+// ─── MENU button (back) ──────────────────────────────────
+function ipodMenu() {
+  if (ipodNavStack.length === 0) return; // already at root
+  const prev = ipodNavStack.pop();
+  ipodCursor = prev.cursor;
+  ipodShowView(prev.view, prev.extra);
+  ipodUpdateCursor(prev.view, prev.extra);
+}
+
+// ─── Load + play a track ─────────────────────────────────
+function ipodLoadTrack(songIdx, autoplay) {
+  ipodSongIdx = ((songIdx % IPOD_SONGS.length) + IPOD_SONGS.length) % IPOD_SONGS.length;
+  const track = IPOD_SONGS[ipodSongIdx];
   const audio = $("ipod-audio");
   if (!audio) return;
 
@@ -372,17 +589,21 @@ function ipodLoadTrack(idx, autoplay) {
   audio.src = track.src;
   audio.load();
 
-  // Update display
-  const titleEl  = document.querySelector("#ipod-marquee span");
-  const artistEl = document.querySelector(".ipod-song-artist");
-  const albumEl  = document.querySelector(".ipod-song-album");
-  const artEl    = document.querySelector(".ipod-cover");
-  if (titleEl)  titleEl.textContent  = track.title;
+  // Update Now Playing display
+  const titleSpan = document.querySelector("#ipod-marquee span");
+  if (titleSpan) titleSpan.textContent = track.title;
+  const artistEl = $('ipod-artist-label');
+  const albumEl  = $('ipod-album-label');
+  const artEl    = $('ipod-cover');
   if (artistEl) artistEl.textContent = track.artist;
   if (albumEl)  albumEl.textContent  = track.album;
   if (artEl)    artEl.src            = track.art;
 
   ipodSyncUI();
+
+  // Update window statusbar
+  const sb = $('ipod-statusbar');
+  if (sb && ipodView === 'nowplaying') sb.textContent = `♪ ${track.title} — ${track.artist}`;
 
   if (autoplay) {
     audio.play()
@@ -396,41 +617,38 @@ function ipodLoadTrack(idx, autoplay) {
 
 function formatIpodTime(sec) {
   if (!Number.isFinite(sec) || sec < 0) sec = 0;
-  const m = Math.floor(sec / 60);
-  const s = String(Math.floor(sec % 60)).padStart(2, '0');
-  return `${m}:${s}`;
+  return `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
 }
 
 function ipodSyncUI() {
   const audio = $("ipod-audio");
-  const fill = $("ipod-fill");
-  const elapsed = $("ipod-elapsed");
-  const total = $("ipod-total");
-
   if (!audio) return;
+  const elapsed = $("ipod-elapsed");
+  const total   = $("ipod-total");
+  const fill    = $("ipod-fill");
+  const counter = $("ipod-track-counter");
 
   if (elapsed) elapsed.textContent = formatIpodTime(audio.currentTime || 0);
   const dur = audio.duration;
   if (total) total.textContent = Number.isFinite(dur) ? formatIpodTime(dur) : "0:00";
   const pct = (Number.isFinite(dur) && dur > 0) ? (audio.currentTime / dur) * 100 : 0;
   if (fill) fill.style.width = `${Math.max(0, Math.min(100, pct))}%`;
-
-  // Track counter (e.g. "1 of 2")
-  const counter = $("ipod-track-counter");
-  if (counter) counter.textContent = `${ipodIndex + 1} of ${IPOD_PLAYLIST.length}`;
+  if (counter) counter.textContent = `${ipodQueuePos + 1} of ${ipodQueue.length}`;
 }
 
 function ipodSetPlayingUI(isPlaying) {
   const wheel = $("ipod-wheel");
-  if (!wheel) return;
-  wheel.classList.toggle("ipod-spinning", isPlaying);
+  if (wheel) wheel.classList.toggle("ipod-spinning", isPlaying);
 }
 
 function ipodPlayPause() {
   const audio = $("ipod-audio");
-  if (!audio) { console.warn("Missing #ipod-audio element"); return; }
-
+  if (!audio) return;
   if (audio.paused) {
+    // If nothing loaded, go to now playing
+    if (!audio.src || audio.src === window.location.href) {
+      ipodLoadTrack(0, true); return;
+    }
     audio.play()
       .then(() => { ipodPlaying = true; ipodSetPlayingUI(true); })
       .catch(err => console.warn("Audio play blocked:", err));
@@ -442,39 +660,105 @@ function ipodPlayPause() {
 }
 
 function ipodSkip() {
-  // Advance to next track, keep playing if already playing
-  const wasPlaying = !$("ipod-audio").paused || ipodPlaying;
-  ipodLoadTrack(ipodIndex + 1, wasPlaying);
+  // Next in queue
+  const wasPlaying = ipodPlaying || !$("ipod-audio")?.paused;
+  ipodQueuePos = (ipodQueuePos + 1) % ipodQueue.length;
+  ipodLoadTrack(ipodQueue[ipodQueuePos], wasPlaying);
+  // If on Now Playing screen, stay there
+  if (ipodView !== 'nowplaying') {
+    ipodNavStack.push({ view: ipodView, cursor: ipodCursor, extra: undefined });
+    ipodShowView('nowplaying');
+  }
 }
 
 function ipodRewind() {
   const audio = $("ipod-audio");
   if (!audio) return;
-  // If more than 3 seconds in, restart current track; else go to previous
   if (audio.currentTime > 3) {
     audio.currentTime = 0;
     ipodSyncUI();
   } else {
-    const wasPlaying = !audio.paused || ipodPlaying;
-    ipodLoadTrack(ipodIndex - 1, wasPlaying);
+    const wasPlaying = ipodPlaying;
+    ipodQueuePos = (ipodQueuePos - 1 + ipodQueue.length) % ipodQueue.length;
+    ipodLoadTrack(ipodQueue[ipodQueuePos], wasPlaying);
+    if (ipodView !== 'nowplaying') {
+      ipodNavStack.push({ view: ipodView, cursor: ipodCursor, extra: undefined });
+      ipodShowView('nowplaying');
+    }
   }
 }
 
-// Keep UI updated from actual audio events
-(function initIpodAudio() {
+// ─── Init ────────────────────────────────────────────────
+(function initIpod() {
   const audio = $("ipod-audio");
   if (!audio) return;
 
   audio.addEventListener("loadedmetadata", ipodSyncUI);
-  audio.addEventListener("timeupdate", ipodSyncUI);
-  audio.addEventListener("play",   () => { ipodPlaying = true;  ipodSetPlayingUI(true);  });
-  audio.addEventListener("pause",  () => { ipodPlaying = false; ipodSetPlayingUI(false); });
-  audio.addEventListener("ended",  () => {
-    // Auto-advance to next track
-    ipodLoadTrack(ipodIndex + 1, true);
+  audio.addEventListener("timeupdate",     ipodSyncUI);
+  audio.addEventListener("play",  () => { ipodPlaying = true;  ipodSetPlayingUI(true);  });
+  audio.addEventListener("pause", () => { ipodPlaying = false; ipodSetPlayingUI(false); });
+  audio.addEventListener("ended", () => {
+    // Auto-advance to next in queue
+    ipodQueuePos = (ipodQueuePos + 1) % ipodQueue.length;
+    ipodLoadTrack(ipodQueue[ipodQueuePos], true);
   });
 
+  // Build playlists + allsongs lists on load
+  ipodRenderList('playlists');
+  ipodRenderList('allsongs');
+
+  // Start on main menu
+  ipodShowView('mainmenu');
+  ipodUpdateCursor('mainmenu');
   ipodSyncUI();
+
+  // Scroll wheel: click-and-drag clockwise/counterclockwise
+  const wheel = $("ipod-wheel");
+  if (wheel) {
+    let wheelDragging = false;
+    let wheelLastAngle = null;
+    let wheelAccum = 0;
+    const SCROLL_THRESHOLD = 25; // degrees per step
+
+    function getAngle(e, rect) {
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top  + rect.height / 2;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return Math.atan2(clientY - cy, clientX - cx) * (180 / Math.PI);
+    }
+
+    function wheelStart(e) {
+      // Don't hijack center button or cardinal labels
+      if (e.target.classList.contains('ipod-center-btn') ||
+          e.target.classList.contains('ipod-wheel-label')) return;
+      wheelDragging = true;
+      wheelLastAngle = getAngle(e, wheel.getBoundingClientRect());
+      wheelAccum = 0;
+      e.preventDefault();
+    }
+    function wheelMove(e) {
+      if (!wheelDragging) return;
+      const angle = getAngle(e, wheel.getBoundingClientRect());
+      let delta = angle - wheelLastAngle;
+      // Wrap around ±180
+      if (delta > 180) delta -= 360;
+      if (delta < -180) delta += 360;
+      wheelAccum += delta;
+      wheelLastAngle = angle;
+      if (wheelAccum > SCROLL_THRESHOLD)  { ipodScrollDown(); wheelAccum = 0; }
+      if (wheelAccum < -SCROLL_THRESHOLD) { ipodScrollUp();   wheelAccum = 0; }
+      e.preventDefault();
+    }
+    function wheelEnd() { wheelDragging = false; wheelLastAngle = null; }
+
+    wheel.addEventListener('mousedown',  wheelStart);
+    wheel.addEventListener('touchstart', wheelStart, { passive: false });
+    document.addEventListener('mousemove',  wheelMove);
+    document.addEventListener('touchmove',  wheelMove, { passive: false });
+    document.addEventListener('mouseup',    wheelEnd);
+    document.addEventListener('touchend',   wheelEnd);
+  }
 })();
 
 // ===================== PAINT (XP accurate) =====================

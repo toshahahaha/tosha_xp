@@ -531,7 +531,7 @@
   </div>
 
   <!-- =================== MUSIC PLAYER WINDOW =================== -->
-  <div class="xp-window" id="music-player" style="top:60px; left:200px; width:420px; height:580px;">
+  <div class="xp-window" id="music-player" style="top:60px; left:200px; width:420px; height:600px;">
     <div class="win-resize win-resize-nw" onmousedown="startResize(event,'music-player','nw')"></div>
     <div class="win-resize win-resize-n"  onmousedown="startResize(event,'music-player','n')"></div>
     <div class="win-resize win-resize-ne" onmousedown="startResize(event,'music-player','ne')"></div>
@@ -552,74 +552,118 @@
     <div class="win-body" style="background:#c8c8c8; display:flex; align-items:center; justify-content:center; padding:20px;">
       <!-- iPod Classic Shell -->
       <div class="ipod-shell">
+
+        <!-- Hold switch strip at top -->
+        <div class="ipod-top-row">
+          <div class="ipod-hold-switch"><div class="ipod-hold-knob"></div></div>
+        </div>
+
         <!-- Screen area -->
         <div class="ipod-screen-bezel">
           <div class="ipod-screen">
-            <!-- Status bar -->
+
+            <!-- STATUS BAR (always visible) -->
             <div class="ipod-status-bar">
+              <span class="ipod-status-title" id="ipod-status-title">iPod</span>
               <span class="ipod-battery">▐▐▐▐▌</span>
             </div>
-            <!-- Now Playing header -->
-            <div class="ipod-now-playing-header">Now Playing</div>
-            <!-- Album art -->
-            <div class="ipod-album-art">
-              <img
-                id="ipod-cover"
-                class="ipod-cover"
-                src="https://i1.sndcdn.com/artworks-IXsnvZeztxgQoL29-INTj2g-t500x500.png"
-                alt="I Love My Computer — Ninajirachi album art"
-                draggable="false"
-              />
+
+            <!-- ── VIEW: MAIN MENU ── -->
+            <div class="ipod-view" id="ipod-view-mainmenu">
+              <div class="ipod-menu-header">iPod</div>
+              <ul class="ipod-menu-list" id="ipod-list-mainmenu">
+                <li class="ipod-menu-item" data-action="goto:music">Music <span class="ipod-arrow">›</span></li>
+                <li class="ipod-menu-item" data-action="goto:nowplaying">Now Playing <span class="ipod-arrow">›</span></li>
+                <li class="ipod-menu-item" data-action="goto:settings">Settings <span class="ipod-arrow">›</span></li>
+              </ul>
             </div>
 
-            <!-- Hidden audio element (drives the player) -->
-            <audio
-              id="ipod-audio"
-              preload="metadata"
-              src="iPod Touch.mp3"
-            ></audio>
-            <!-- Song info -->
-            <div class="ipod-song-info">
-              <div class="ipod-song-title" id="ipod-marquee">
-                <span>iPod Touch</span>
-              </div>
-              <div class="ipod-song-artist">Ninajirachi</div>
-              <div class="ipod-song-album">I Love My Computer</div>
-              <div class="ipod-track-counter" id="ipod-track-counter">1 of 2</div>
+            <!-- ── VIEW: MUSIC ── -->
+            <div class="ipod-view" id="ipod-view-music" style="display:none;">
+              <div class="ipod-menu-header">Music</div>
+              <ul class="ipod-menu-list" id="ipod-list-music">
+                <li class="ipod-menu-item" data-action="goto:playlists">Playlists <span class="ipod-arrow">›</span></li>
+                <li class="ipod-menu-item" data-action="goto:allsongs">All Songs <span class="ipod-arrow">›</span></li>
+              </ul>
             </div>
-            <!-- Progress bar -->
-            <div class="ipod-progress-wrap">
-              <span class="ipod-time" id="ipod-elapsed">1:02</span>
-              <div class="ipod-progress-track">
-                <div class="ipod-progress-fill" id="ipod-fill"></div>
-              </div>
-              <span class="ipod-time" id="ipod-total">3:24</span>
+
+            <!-- ── VIEW: PLAYLISTS ── -->
+            <div class="ipod-view" id="ipod-view-playlists" style="display:none;">
+              <div class="ipod-menu-header">Playlists</div>
+              <ul class="ipod-menu-list" id="ipod-list-playlists">
+                <!-- populated by JS -->
+              </ul>
             </div>
-          </div>
-        </div>
+
+            <!-- ── VIEW: PLAYLIST SONGS ── -->
+            <div class="ipod-view" id="ipod-view-playlistsongs" style="display:none;">
+              <div class="ipod-menu-header" id="ipod-playlist-header">now</div>
+              <ul class="ipod-menu-list" id="ipod-list-playlistsongs">
+                <!-- populated by JS -->
+              </ul>
+            </div>
+
+            <!-- ── VIEW: ALL SONGS ── -->
+            <div class="ipod-view" id="ipod-view-allsongs" style="display:none;">
+              <div class="ipod-menu-header">All Songs</div>
+              <ul class="ipod-menu-list" id="ipod-list-allsongs">
+                <!-- populated by JS -->
+              </ul>
+            </div>
+
+            <!-- ── VIEW: NOW PLAYING ── -->
+            <div class="ipod-view" id="ipod-view-nowplaying" style="display:none;">
+              <div class="ipod-now-playing-header">Now Playing</div>
+              <div class="ipod-album-art">
+                <img id="ipod-cover" class="ipod-cover"
+                  src="https://i1.sndcdn.com/artworks-IXsnvZeztxgQoL29-INTj2g-t500x500.png"
+                  alt="album art" draggable="false"/>
+              </div>
+              <div class="ipod-song-info">
+                <div class="ipod-song-title" id="ipod-marquee"><span>iPod Touch</span></div>
+                <div class="ipod-song-artist" id="ipod-artist-label">Ninajirachi</div>
+                <div class="ipod-song-album"  id="ipod-album-label">I Love My Computer</div>
+                <div class="ipod-track-counter" id="ipod-track-counter">1 of 2</div>
+              </div>
+              <div class="ipod-progress-wrap">
+                <span class="ipod-time" id="ipod-elapsed">0:00</span>
+                <div class="ipod-progress-track">
+                  <div class="ipod-progress-fill" id="ipod-fill"></div>
+                </div>
+                <span class="ipod-time" id="ipod-total">0:00</span>
+              </div>
+            </div>
+
+            <!-- ── VIEW: SETTINGS (stub) ── -->
+            <div class="ipod-view" id="ipod-view-settings" style="display:none;">
+              <div class="ipod-menu-header">Settings</div>
+              <ul class="ipod-menu-list">
+                <li class="ipod-menu-item ipod-menu-item--static">Repeat: Off</li>
+                <li class="ipod-menu-item ipod-menu-item--static">Shuffle: Off</li>
+                <li class="ipod-menu-item ipod-menu-item--static">Backlight: Always On</li>
+              </ul>
+            </div>
+
+          </div><!-- /ipod-screen -->
+        </div><!-- /ipod-screen-bezel -->
+
+        <!-- Hidden audio element -->
+        <audio id="ipod-audio" preload="metadata" src="iPod Touch.mp3"></audio>
 
         <!-- Click wheel -->
         <div class="ipod-wheel-wrap">
           <div class="ipod-wheel" id="ipod-wheel">
-            <!-- Center button -->
-            <div class="ipod-center-btn" onclick="ipodPlayPause()" title="Play/Pause"></div>
-            <!-- Cardinal labels -->
-            <div class="ipod-wheel-label ipod-wheel-menu">MENU</div>
-            <div class="ipod-wheel-label ipod-wheel-fwd" onclick="ipodSkip()" title="Next">▶▶</div>
-            <div class="ipod-wheel-label ipod-wheel-rew" onclick="ipodRewind()" title="Previous">◀◀</div>
+            <div class="ipod-center-btn"  onclick="ipodSelect()"    title="Select"></div>
+            <div class="ipod-wheel-label ipod-wheel-menu" onclick="ipodMenu()">MENU</div>
+            <div class="ipod-wheel-label ipod-wheel-fwd"  onclick="ipodSkip()"      title="Next">▶▶</div>
+            <div class="ipod-wheel-label ipod-wheel-rew"  onclick="ipodRewind()"    title="Prev">◀◀</div>
             <div class="ipod-wheel-label ipod-wheel-play" onclick="ipodPlayPause()" title="Play/Pause">▶❙❙</div>
           </div>
         </div>
 
-        <!-- Hold switch & headphone jack row -->
-        <div class="ipod-top-row">
-          <div class="ipod-hold-switch">
-            <div class="ipod-hold-knob"></div>
-          </div>
-        </div>
-      </div>
+      </div><!-- /ipod-shell -->
     </div>
-    <div class="win-statusbar">Now Playing — iPod touch · Ninajirachi</div>
+    <div class="win-statusbar" id="ipod-statusbar">iPod — use the click wheel to navigate</div>
   </div>
 
   <!-- =================== TASKBAR =================== -->
