@@ -1260,12 +1260,15 @@ button, input, textarea, select, label {
   letter-spacing: 0.3px;
 }
 
-/* ── iPod views (each view is full-screen inside .ipod-screen) ── */
+/* ── iPod views — fill the screen, slide sideways between pages ── */
 .ipod-view {
   display: flex;
   flex-direction: column;
+  width: 100%;
   flex: 1;
   min-height: 0;
+  will-change: transform;
+  /* JS sets transform: translateX(±100%) to slide in/out */
 }
 
 /* Menu header bar — blue gradient like real iPod classic */

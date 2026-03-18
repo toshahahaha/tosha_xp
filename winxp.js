@@ -368,105 +368,124 @@ const IPOD_PLAYLISTS = [
 
 // ─── Playback state ─────────────────────────────────────
 let ipodPlaying  = false;
-let ipodSongIdx  = 0;          // index into IPOD_SONGS (current track)
-let ipodQueue    = [0, 1];     // ordered list of song indices to play through
-let ipodQueuePos = 0;          // position inside ipodQueue
+let ipodSongIdx  = 0;
+let ipodQueue    = [0, 1];
+let ipodQueuePos = 0;
 
 // ─── Navigation state ───────────────────────────────────
-// Stack of {view, cursorIndex} so MENU always goes back correctly
+// Stack entries: { view, cursor, extra }
+// extra = playlist index for playlistsongs view, else undefined
 const ipodNavStack = [];
-let ipodView     = 'mainmenu';   // current visible view id
-let ipodCursor   = 0;            // highlighted row index in current list
+let ipodView      = 'mainmenu';
+let ipodViewExtra = undefined;   // extra data for the CURRENT view (e.g. playlist index)
+let ipodCursor    = 0;
 
-// ─── View definitions (what list each view shows) ───────
-// Each entry: { listId, items fn, parentView }
+// ─── Items for a given view ──────────────────────────────
 function ipodGetItems(view, extra) {
   switch (view) {
-    case 'mainmenu':   return ['Music', 'Now Playing', 'Settings'];
-    case 'music':      return ['Playlists', 'All Songs'];
-    case 'playlists':  return IPOD_PLAYLISTS.map(p => p.name);
-    case 'allsongs':   return IPOD_SONGS.map(s => s.title);
+    case 'mainmenu':      return ['Music', 'Now Playing', 'Settings'];
+    case 'music':         return ['Playlists', 'All Songs'];
+    case 'playlists':     return IPOD_PLAYLISTS.map(p => p.name);
+    case 'allsongs':      return IPOD_SONGS.map(s => s.title);
     case 'playlistsongs': {
       const pl = IPOD_PLAYLISTS[extra];
       return pl ? pl.songs.map(i => IPOD_SONGS[i].title) : [];
     }
-    case 'settings':   return ['Repeat: Off', 'Shuffle: Off', 'Backlight: Always On'];
+    case 'settings': return ['Repeat: Off', 'Shuffle: Off', 'Backlight: Always On'];
     default: return [];
   }
 }
 
-// ─── Render a view's list ────────────────────────────────
-function ipodRenderList(view, extra) {
-  const listIdMap = {
-    mainmenu: 'ipod-list-mainmenu',
-    music:    'ipod-list-music',
-    playlists:'ipod-list-playlists',
-    allsongs: 'ipod-list-allsongs',
-    playlistsongs: 'ipod-list-playlistsongs',
-  };
-  const listId = listIdMap[view];
-  if (!listId) return;
-  const ul = $(listId);
-  if (!ul) return;
+// ─── Map view name → list element ID ─────────────────────
+const IPOD_LIST_IDS = {
+  mainmenu:      'ipod-list-mainmenu',
+  music:         'ipod-list-music',
+  playlists:     'ipod-list-playlists',
+  allsongs:      'ipod-list-allsongs',
+  playlistsongs: 'ipod-list-playlistsongs',
+};
 
+// ─── Render a list for a view ────────────────────────────
+function ipodRenderList(view, extra, activeCursor) {
+  const ul = $(IPOD_LIST_IDS[view]);
+  if (!ul || view === 'settings' || view === 'nowplaying') return;
   const items = ipodGetItems(view, extra);
-  // Settings items are static — don't re-render
-  if (view === 'settings') return;
+  const cursor = (activeCursor !== undefined) ? activeCursor : ipodCursor;
+  const isSongList = (view === 'allsongs' || view === 'playlistsongs');
 
   ul.innerHTML = '';
   items.forEach((label, i) => {
     const li = document.createElement('li');
-    li.className = 'ipod-menu-item' + (i === ipodCursor ? ' ipod-menu-item--active' : '');
-    const isStatic = (view === 'settings');
-    if (!isStatic) {
-      li.innerHTML = `${label} <span class="ipod-arrow">›</span>`;
-      // Songs in lists don't show arrow if they're leaf items
-      if (view === 'allsongs' || view === 'playlistsongs') {
-        li.innerHTML = label;
-        if (ipodQueue.length > 0) {
-          const globalIdx = view === 'allsongs' ? i :
-            (IPOD_PLAYLISTS[extra] ? IPOD_PLAYLISTS[extra].songs[i] : i);
-          if (globalIdx === ipodSongIdx && ipodPlaying) {
-            li.innerHTML = '♪ ' + label;
-          }
-        }
-      }
+    li.className = 'ipod-menu-item' + (i === cursor ? ' ipod-menu-item--active' : '');
+    if (isSongList) {
+      const globalIdx = view === 'allsongs' ? i : (IPOD_PLAYLISTS[extra]?.songs[i] ?? i);
+      const playing = globalIdx === ipodSongIdx && ipodPlaying;
+      li.textContent = (playing ? '♪ ' : '') + label;
     } else {
-      li.textContent = label;
-      li.classList.add('ipod-menu-item--static');
+      li.innerHTML = `<span>${label}</span><span class="ipod-arrow">›</span>`;
     }
     ul.appendChild(li);
   });
 }
 
-// ─── Show a view ────────────────────────────────────────
-function ipodShowView(viewName, extra) {
-  // Hide all views
-  document.querySelectorAll('.ipod-view').forEach(el => el.style.display = 'none');
-  // Show target
-  const el = $('ipod-view-' + viewName);
-  if (el) el.style.display = '';
-  ipodView = viewName;
+// ─── Transition to a new view ────────────────────────────
+function ipodShowView(viewName, extra, direction) {
+  // direction: 'forward' | 'back' (for slide animation)
+  const screen = document.querySelector('.ipod-screen');
+  const currentEl = $('ipod-view-' + ipodView);
+  const nextEl    = $('ipod-view-' + viewName);
+  if (!nextEl) return;
 
-  // Update playlist header if needed
-  if (viewName === 'playlistsongs' && extra !== undefined) {
+  // Slide animation
+  if (screen && currentEl && nextEl && currentEl !== nextEl) {
+    const isBack = direction === 'back';
+    // Position next view off-screen
+    nextEl.style.transition = 'none';
+    nextEl.style.transform  = isBack ? 'translateX(-100%)' : 'translateX(100%)';
+    nextEl.style.display    = '';
+    // Force reflow
+    nextEl.getBoundingClientRect();
+    // Slide current out + next in simultaneously
+    currentEl.style.transition = 'transform 0.18s ease-in-out';
+    currentEl.style.transform  = isBack ? 'translateX(100%)' : 'translateX(-100%)';
+    nextEl.style.transition    = 'transform 0.18s ease-in-out';
+    nextEl.style.transform     = 'translateX(0)';
+    setTimeout(() => {
+      currentEl.style.display    = 'none';
+      currentEl.style.transition = '';
+      currentEl.style.transform  = '';
+      nextEl.style.transition    = '';
+    }, 185);
+  } else {
+    document.querySelectorAll('.ipod-view').forEach(el => {
+      el.style.display = 'none';
+      el.style.transform = '';
+    });
+    nextEl.style.display = '';
+  }
+
+  ipodView      = viewName;
+  ipodViewExtra = extra;
+
+  // Render list content for new view
+  ipodRenderList(viewName, extra, ipodCursor);
+
+  // Update playlist header
+  if (viewName === 'playlistsongs' && extra !== undefined && IPOD_PLAYLISTS[extra]) {
     const hdr = $('ipod-playlist-header');
     if (hdr) hdr.textContent = IPOD_PLAYLISTS[extra].name;
   }
 
-  // Render the list with the current cursor
-  ipodRenderList(viewName, extra);
-
-  // Update status bar title
+  // Status bar title
   const titles = {
     mainmenu: 'iPod', music: 'Music', playlists: 'Playlists',
-    playlistsongs: extra !== undefined ? IPOD_PLAYLISTS[extra]?.name : 'Playlist',
+    playlistsongs: (extra !== undefined && IPOD_PLAYLISTS[extra]) ? IPOD_PLAYLISTS[extra].name : 'Playlist',
     allsongs: 'All Songs', nowplaying: 'Now Playing', settings: 'Settings'
   };
   const stEl = $('ipod-status-title');
   if (stEl) stEl.textContent = titles[viewName] || 'iPod';
 
-  // Update window statusbar
+  // Window statusbar
   const sb = $('ipod-statusbar');
   if (sb) {
     if (viewName === 'nowplaying') {
@@ -478,104 +497,80 @@ function ipodShowView(viewName, extra) {
   }
 }
 
-// ─── Update cursor highlight in current list ─────────────
+// ─── Update just the cursor highlight (no full re-render) ─
 function ipodUpdateCursor(view, extra) {
-  const listIdMap = {
-    mainmenu: 'ipod-list-mainmenu', music: 'ipod-list-music',
-    playlists:'ipod-list-playlists', allsongs:'ipod-list-allsongs',
-    playlistsongs:'ipod-list-playlistsongs', settings:'ipod-list-settings',
-  };
-  const ul = $(listIdMap[view]);
+  const ul = $(IPOD_LIST_IDS[view]);
   if (!ul) return;
-  const items = ul.querySelectorAll('.ipod-menu-item');
-  items.forEach((li, i) => {
+  ul.querySelectorAll('.ipod-menu-item').forEach((li, i) => {
     li.classList.toggle('ipod-menu-item--active', i === ipodCursor);
   });
 }
 
-// ─── Scroll up/down ─────────────────────────────────────
+// ─── Scroll up/down ──────────────────────────────────────
 function ipodScrollDown() {
-  const items = ipodGetItems(ipodView, ipodNavStack[ipodNavStack.length - 1]?.extra);
+  const items = ipodGetItems(ipodView, ipodViewExtra);
   if (!items.length) return;
   ipodCursor = (ipodCursor + 1) % items.length;
-  ipodUpdateCursor(ipodView, ipodNavStack[ipodNavStack.length - 1]?.extra);
+  ipodUpdateCursor(ipodView, ipodViewExtra);
 }
 function ipodScrollUp() {
-  const items = ipodGetItems(ipodView, ipodNavStack[ipodNavStack.length - 1]?.extra);
+  const items = ipodGetItems(ipodView, ipodViewExtra);
   if (!items.length) return;
   ipodCursor = (ipodCursor - 1 + items.length) % items.length;
-  ipodUpdateCursor(ipodView, ipodNavStack[ipodNavStack.length - 1]?.extra);
+  ipodUpdateCursor(ipodView, ipodViewExtra);
 }
 
 // ─── SELECT (center button) ──────────────────────────────
 function ipodSelect() {
-  const extra = ipodNavStack[ipodNavStack.length - 1]?.extra;
+  if (ipodView === 'nowplaying') { ipodPlayPause(); return; }
+  if (ipodView === 'settings')   return;
 
-  if (ipodView === 'nowplaying') {
-    ipodPlayPause(); return;
-  }
-
-  // Navigate into sub-views
-  const transitions = {
-    mainmenu: ['music', 'nowplaying', 'settings'],
-    music:    ['playlists', 'allsongs'],
-    playlists: null,  // handled below
-    playlistsongs: null,
-    allsongs: null,
-  };
+  // Push current state onto nav stack
+  const push = () => ipodNavStack.push({ view: ipodView, cursor: ipodCursor, extra: ipodViewExtra });
 
   if (ipodView === 'mainmenu') {
-    const dest = ['music','nowplaying','settings'][ipodCursor];
-    if (dest) {
-      ipodNavStack.push({ view: ipodView, cursor: ipodCursor, extra });
-      ipodCursor = 0;
-      ipodShowView(dest);
-    }
+    const dests = ['music', 'nowplaying', 'settings'];
+    const dest = dests[ipodCursor];
+    if (!dest) return;
+    push(); ipodCursor = 0; ipodShowView(dest, undefined, 'forward');
+
   } else if (ipodView === 'music') {
-    const dest = ['playlists','allsongs'][ipodCursor];
-    if (dest) {
-      ipodNavStack.push({ view: ipodView, cursor: ipodCursor, extra });
-      ipodCursor = 0;
-      ipodShowView(dest);
-    }
+    const dests = ['playlists', 'allsongs'];
+    const dest = dests[ipodCursor];
+    if (!dest) return;
+    push(); ipodCursor = 0; ipodShowView(dest, undefined, 'forward');
+
   } else if (ipodView === 'playlists') {
-    // Enter a specific playlist
     const plIdx = ipodCursor;
-    ipodNavStack.push({ view: ipodView, cursor: ipodCursor, extra });
-    ipodCursor = 0;
-    ipodShowView('playlistsongs', plIdx);
+    push(); ipodCursor = 0; ipodShowView('playlistsongs', plIdx, 'forward');
+
   } else if (ipodView === 'playlistsongs') {
-    // Play selected song from playlist
-    const pl = IPOD_PLAYLISTS[extra];
+    const pl = IPOD_PLAYLISTS[ipodViewExtra];
     if (!pl) return;
     const songIdx = pl.songs[ipodCursor];
-    ipodQueue    = pl.songs.slice(); // set queue to this playlist
+    if (songIdx === undefined) return;
+    ipodQueue    = pl.songs.slice();
     ipodQueuePos = ipodCursor;
+    push(); ipodCursor = 0;
     ipodLoadTrack(songIdx, true);
-    // Navigate to Now Playing
-    ipodNavStack.push({ view: ipodView, cursor: ipodCursor, extra });
-    ipodCursor = 0;
-    ipodShowView('nowplaying');
+    ipodShowView('nowplaying', undefined, 'forward');
+
   } else if (ipodView === 'allsongs') {
     const songIdx = ipodCursor;
     ipodQueue    = IPOD_SONGS.map((_, i) => i);
-    ipodQueuePos = ipodCursor;
+    ipodQueuePos = songIdx;
+    push(); ipodCursor = 0;
     ipodLoadTrack(songIdx, true);
-    ipodNavStack.push({ view: ipodView, cursor: ipodCursor, extra });
-    ipodCursor = 0;
-    ipodShowView('nowplaying');
-  } else if (ipodView === 'settings') {
-    // settings items are static — no action
+    ipodShowView('nowplaying', undefined, 'forward');
   }
 }
 
-// ─── MENU button (back) ──────────────────────────────────
+// ─── MENU button (go back) ───────────────────────────────
 function ipodMenu() {
-  if (ipodNavStack.length === 0) return; // already at root
+  if (ipodNavStack.length === 0) return;
   const prev = ipodNavStack.pop();
   ipodCursor = prev.cursor;
-  ipodShowView(prev.view, prev.extra);
-  ipodUpdateCursor(prev.view, prev.extra);
+  ipodShowView(prev.view, prev.extra, 'back');
 }
 
 // ─── Load + play a track ─────────────────────────────────
