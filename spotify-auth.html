@@ -40,8 +40,11 @@
 
 <script>
   const CLIENT_ID    = '7cd580ba84714012a9dc4a26a656814c';
-  const REDIRECT_URI = 'https://toshahahaha.github.io/tosha_xp/spotify-auth.html';
+  // Use whatever URL this page is actually served from as the redirect URI
+  const REDIRECT_URI = window.location.origin + window.location.pathname;
   const SCOPES       = 'playlist-read-private playlist-read-collaborative';
+  // Token endpoint — always use the Netlify site (update this once you know your Netlify URL)
+  const TOKEN_URL    = 'https://agent-69bedef28945e45--roaring-florentine-4582da.netlify.app/.netlify/functions/spotify-token';
 
   // ── PKCE helpers ──────────────────────────────────────────────
   function randBytes(n) {
@@ -61,7 +64,7 @@
   // ── Start auth ─────────────────────────────────────────────────
   async function startAuth() {
     const { verifier, challenge } = await pkce();
-    sessionStorage.setItem('pkce_verifier', verifier);
+    localStorage.setItem('pkce_verifier', verifier);
     const params = new URLSearchParams({
       client_id:             CLIENT_ID,
       response_type:         'code',
@@ -86,7 +89,8 @@
     }
     if (!code) return; // not a callback, normal page load
 
-    const verifier = sessionStorage.getItem('pkce_verifier');
+    const verifier = localStorage.getItem('pkce_verifier');
+    localStorage.removeItem('pkce_verifier'); // clean up
     if (!verifier) {
       document.getElementById('error-msg').style.display = 'block';
       document.getElementById('error-msg').textContent   = 'Missing PKCE verifier — please try again.';
@@ -95,7 +99,7 @@
 
     // Exchange code for tokens via our Netlify function (avoids CORS)
     try {
-      const res = await fetch('/.netlify/functions/spotify-token', {
+      const res = await fetch(TOKEN_URL, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ code, verifier, redirect_uri: REDIRECT_URI, grant_type: 'authorization_code' }),
