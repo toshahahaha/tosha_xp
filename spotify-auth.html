@@ -40,11 +40,9 @@
 
 <script>
   const CLIENT_ID    = '7cd580ba84714012a9dc4a26a656814c';
-  // Use whatever URL this page is actually served from as the redirect URI
-  const REDIRECT_URI = window.location.origin + window.location.pathname;
+  const REDIRECT_URI = 'https://roaring-florentine-4582da.netlify.app/spotify-auth.html';
   const SCOPES       = 'playlist-read-private playlist-read-collaborative';
-  // Token endpoint — always use the Netlify site (update this once you know your Netlify URL)
-  const TOKEN_URL    = 'https://agent-69bedef28945e45--roaring-florentine-4582da.netlify.app/.netlify/functions/spotify-token';
+  const TOKEN_URL    = 'https://roaring-florentine-4582da.netlify.app/.netlify/functions/spotify-token';
 
   // ── PKCE helpers ──────────────────────────────────────────────
   function randBytes(n) {
