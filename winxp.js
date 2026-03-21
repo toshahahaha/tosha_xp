@@ -2429,13 +2429,13 @@ function ipodRewind() {
   let wmpRaf = 0;
   let wmpInited  = false;
 
-  // Visualisation names (shown in label)
+  // Visualisation names (shown in label) — named after real WMP viz packs
   const VIZ_NAMES = [
-    'Bars & Waves',
-    'Radial Burst',
-    'Oscilloscope',
-    'Starfield',
-    'Fire',
+    'Bars & Waves',   // classic WMP default
+    'Alchemy',        // WMP Alchemy plugin — liquid particle blobs
+    'Scope',          // oscilloscope waveform
+    'Battery',        // WMP Battery viz — vertical gauge meters
+    'Spikes',         // circular spike burst
   ];
 
   // ── DOM refs (populated in wmpInit) ─────────────────────────
@@ -2643,15 +2643,6 @@ function ipodRewind() {
   // ─────────────────────────────────────────────────────────────
   function wmpStartVizLoop() {
     let t = 0;
-    // Starfield state
-    const stars = Array.from({length:120}, () => ({
-      x: Math.random(), y: Math.random(),
-      vx: (Math.random()-.5)*.002, vy: (Math.random()-.5)*.002,
-      size: Math.random()*2+.5, bright: Math.random()
-    }));
-    // Fire state
-    const FIRE_COLS = 80, FIRE_ROWS = 50;
-    const fire = new Uint8Array(FIRE_COLS * FIRE_ROWS);
 
     const loop = () => {
       wmpRaf = requestAnimationFrame(loop);
@@ -2680,238 +2671,361 @@ function ipodRewind() {
 
       switch (wmpViz) {
         case 0: drawBarsWaves(W, H, freq, wave, accent, t); break;
-        case 1: drawRadial(W, H, freq, accent, t);          break;
-        case 2: drawOscilloscope(W, H, wave, accent, t);    break;
-        case 3: drawStarfield(W, H, freq, accent, t, stars);break;
-        case 4: drawFire(W, H, freq, accent, t, fire);      break;
+        case 1: drawAlchemy(W, H, freq, wave, accent, t);   break;
+        case 2: drawScope(W, H, wave, accent, t);           break;
+        case 3: drawBattery(W, H, freq, t);                 break;
+        case 4: drawSpikes(W, H, freq, wave, t);            break;
       }
     };
     loop();
   }
 
   // ─────────────────────────────────────────────────────────────
-  // VIZ 0 — Bars & Waves  (classic WMP style)
+  // VIZ 0 — Bars & Waves  (authentic WMP classic look)
+  // Mirrored bars from center, peak-hold dots, wave riding on top
   // ─────────────────────────────────────────────────────────────
-  function drawBarsWaves(W, H, freq, wave, accent, t) {
-    // Background: deep space gradient
-    const bg = ctx2d.createLinearGradient(0,0,0,H);
-    bg.addColorStop(0, '#000010');
-    bg.addColorStop(1, '#000820');
-    ctx2d.fillStyle = bg;
-    ctx2d.fillRect(0,0,W,H);
+  const peakHold   = [];   // peak hold positions per bar
+  const peakTimer  = [];   // timer before peak falls
 
-    // Bars (bottom half)
-    const halfH = H * 0.55;
-    const barCount = 48;
-    const bw = W / barCount;
-    const step = Math.floor(freq.length / barCount);
+  function drawBarsWaves(W, H, freq, wave, accent, t) {
+    // Pure black bg — authentic WMP look
+    ctx2d.fillStyle = '#000000';
+    ctx2d.fillRect(0, 0, W, H);
+
+    const barCount = 64;
+    const bw       = W / barCount;
+    const step     = Math.floor(freq.length / barCount);
+    const maxBarH  = H * 0.72;   // bars occupy lower 72% of canvas
+
+    // Init peak arrays
+    while (peakHold.length < barCount)  { peakHold.push(0); peakTimer.push(0); }
 
     for (let i = 0; i < barCount; i++) {
-      const v = freq[i * step] / 255;
-      const bh = v * halfH;
-      const hue = 200 + v * 160;          // blue → purple → pink
-      const grd = ctx2d.createLinearGradient(0, H, 0, H - bh);
-      grd.addColorStop(0, `hsla(${hue},100%,40%,0.9)`);
-      grd.addColorStop(0.6,`hsla(${hue+30},100%,60%,0.8)`);
-      grd.addColorStop(1,  `hsla(${hue+60},100%,90%,0.5)`);
-      ctx2d.fillStyle = grd;
-      ctx2d.fillRect(i*bw + 1, H - bh, bw - 2, bh);
+      const raw = freq[i * step] / 255;
+      const bh  = raw * maxBarH;
 
-      // peak dot
-      ctx2d.fillStyle = `hsla(${hue+60},100%,90%,0.9)`;
-      ctx2d.fillRect(i*bw + 1, H - bh - 2, bw - 2, 2);
+      // Gradient: dark teal → cyan → white-hot at top (just like WMP)
+      const grd = ctx2d.createLinearGradient(0, H, 0, H - bh);
+      grd.addColorStop(0,   '#003a4a');
+      grd.addColorStop(0.4, '#00aacc');
+      grd.addColorStop(0.75,'#00eeff');
+      grd.addColorStop(1,   '#ffffff');
+      ctx2d.fillStyle = grd;
+      ctx2d.fillRect(i * bw + 1, H - bh, bw - 2, bh);
+
+      // Peak hold — white horizontal tick
+      if (bh > peakHold[i]) {
+        peakHold[i] = bh;
+        peakTimer[i] = 40;
+      } else {
+        peakTimer[i]--;
+        if (peakTimer[i] < 0) peakHold[i] = Math.max(0, peakHold[i] - 1.2);
+      }
+      if (peakHold[i] > 2) {
+        ctx2d.fillStyle = '#ffffff';
+        ctx2d.fillRect(i * bw + 1, H - peakHold[i] - 1, bw - 2, 2);
+      }
     }
 
-    // Waveform line (top half)
+    // Waveform drawn across the TOP — bright cyan line with glow
+    const waveY = H * 0.22;   // vertical center of waveform strip
+    const waveAmp = H * 0.18;
+
+    // Glow layer
     ctx2d.beginPath();
-    ctx2d.strokeStyle = accent;
-    ctx2d.lineWidth = 1.5;
-    ctx2d.shadowColor = accent;
-    ctx2d.shadowBlur = 8;
+    ctx2d.lineWidth   = 3;
+    ctx2d.strokeStyle = 'rgba(0,220,255,0.18)';
+    ctx2d.shadowColor = '#00eeff';
+    ctx2d.shadowBlur  = 14;
     for (let i = 0; i < wave.length; i++) {
-      const x = (i / wave.length) * W;
-      const y = (wave[i] / 255) * (H * 0.38) + 4;
+      const x = (i / (wave.length - 1)) * W;
+      const y = waveY + ((wave[i] - 128) / 128) * waveAmp;
+      i === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
+    }
+    ctx2d.stroke();
+
+    // Sharp layer on top
+    ctx2d.beginPath();
+    ctx2d.lineWidth   = 1.2;
+    ctx2d.strokeStyle = '#00eeff';
+    ctx2d.shadowBlur  = 4;
+    for (let i = 0; i < wave.length; i++) {
+      const x = (i / (wave.length - 1)) * W;
+      const y = waveY + ((wave[i] - 128) / 128) * waveAmp;
       i === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
     }
     ctx2d.stroke();
     ctx2d.shadowBlur = 0;
 
-    // Reflection (mirrored bars, faded)
-    ctx2d.save();
-    ctx2d.globalAlpha = 0.12;
-    ctx2d.scale(1, -1);
-    ctx2d.translate(0, -H);
-    for (let i = 0; i < barCount; i++) {
-      const v = freq[i * step] / 255;
-      const bh = v * halfH * 0.4;
-      ctx2d.fillStyle = accent;
-      ctx2d.fillRect(i*bw + 1, H - bh, bw - 2, bh);
-    }
-    ctx2d.restore();
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // VIZ 1 — Radial Burst
-  // ─────────────────────────────────────────────────────────────
-  function drawRadial(W, H, freq, accent, t) {
-    // Fade trail
-    ctx2d.fillStyle = 'rgba(0,0,8,0.18)';
-    ctx2d.fillRect(0,0,W,H);
-
-    const cx = W/2, cy = H/2;
-    const bars = 64;
-    const step = Math.floor(freq.length / bars);
-    const baseR = Math.min(W,H) * 0.12;
-    const maxR  = Math.min(W,H) * 0.44;
-
-    for (let i = 0; i < bars; i++) {
-      const v   = freq[i * step] / 255;
-      const ang = (i / bars) * Math.PI * 2 - Math.PI/2 + t*0.2;
-      const r1  = baseR + 2;
-      const r2  = baseR + v * (maxR - baseR);
-      const hue = (i / bars) * 360 + t * 40;
-
-      ctx2d.beginPath();
-      ctx2d.moveTo(cx + Math.cos(ang)*r1, cy + Math.sin(ang)*r1);
-      ctx2d.lineTo(cx + Math.cos(ang)*r2, cy + Math.sin(ang)*r2);
-      ctx2d.strokeStyle = `hsla(${hue},100%,65%,${0.5 + v*0.5})`;
-      ctx2d.lineWidth = 2.5;
-      ctx2d.shadowColor = `hsl(${hue},100%,70%)`;
-      ctx2d.shadowBlur = 6 + v*10;
-      ctx2d.stroke();
-    }
-    ctx2d.shadowBlur = 0;
-
-    // Center circle
-    const avgVol = freq.reduce((a,b)=>a+b,0)/freq.length/255;
-    const grd = ctx2d.createRadialGradient(cx,cy,0, cx,cy, baseR*(1+avgVol*0.5));
-    grd.addColorStop(0, `hsla(${(t*60)%360},100%,80%,0.9)`);
-    grd.addColorStop(1, 'transparent');
+    // Dividing line between wave and bars
+    ctx2d.strokeStyle = 'rgba(0,200,255,0.12)';
+    ctx2d.lineWidth = 1;
     ctx2d.beginPath();
-    ctx2d.arc(cx, cy, baseR*(1+avgVol*0.5), 0, Math.PI*2);
-    ctx2d.fillStyle = grd;
-    ctx2d.fill();
+    ctx2d.moveTo(0, H * 0.36);
+    ctx2d.lineTo(W, H * 0.36);
+    ctx2d.stroke();
   }
 
   // ─────────────────────────────────────────────────────────────
-  // VIZ 2 — Oscilloscope
+  // VIZ 1 — Alchemy  (WMP Alchemy plugin recreation)
+  // Glowing liquid blobs / plasma spheres that morph to the music
   // ─────────────────────────────────────────────────────────────
-  function drawOscilloscope(W, H, wave, accent, t) {
-    ctx2d.fillStyle = '#000010';
-    ctx2d.fillRect(0,0,W,H);
+  const alcParticles = Array.from({length: 60}, () => ({
+    x: Math.random(), y: Math.random(),
+    vx: (Math.random()-.5)*0.004, vy: (Math.random()-.5)*0.004,
+    r: 0.02 + Math.random()*0.05,
+    hue: Math.random()*360,
+    phase: Math.random()*Math.PI*2,
+    life: Math.random()
+  }));
 
-    // Grid lines
-    ctx2d.strokeStyle = 'rgba(40,80,120,0.3)';
-    ctx2d.lineWidth = 1;
-    for (let y = 0; y <= H; y += H/8) {
-      ctx2d.beginPath(); ctx2d.moveTo(0,y); ctx2d.lineTo(W,y); ctx2d.stroke();
-    }
-    for (let x = 0; x <= W; x += W/12) {
-      ctx2d.beginPath(); ctx2d.moveTo(x,0); ctx2d.lineTo(x,H); ctx2d.stroke();
-    }
+  function drawAlchemy(W, H, freq, wave, accent, t) {
+    // Very slow fade → trails linger like the real Alchemy
+    ctx2d.fillStyle = 'rgba(0,0,0,0.08)';
+    ctx2d.fillRect(0, 0, W, H);
 
-    // Two-layer glow wave
-    for (let pass = 0; pass < 2; pass++) {
+    const avgVol  = freq.reduce((a,b)=>a+b,0) / freq.length / 255;
+    const bassVol = freq.slice(0,8).reduce((a,b)=>a+b,0) / 8 / 255;
+    const midVol  = freq.slice(8,32).reduce((a,b)=>a+b,0) / 24 / 255;
+
+    for (let p of alcParticles) {
+      // Drift + oscillate
+      p.phase += 0.018 + avgVol * 0.06;
+      p.x += p.vx + Math.sin(p.phase * 1.3) * 0.0015 * (1 + midVol * 3);
+      p.y += p.vy + Math.cos(p.phase * 0.9) * 0.0015 * (1 + midVol * 3);
+      // Wrap
+      if (p.x < -0.1) p.x = 1.1;
+      if (p.x > 1.1)  p.x = -0.1;
+      if (p.y < -0.1) p.y = 1.1;
+      if (p.y > 1.1)  p.y = -0.1;
+      // Hue shift slowly
+      p.hue = (p.hue + 0.3 + avgVol * 2) % 360;
+
+      const px = p.x * W;
+      const py = p.y * H;
+      const pr = (p.r + bassVol * 0.06) * Math.min(W,H);
+      const bright = 40 + midVol * 40;
+      const alpha  = 0.55 + avgVol * 0.35;
+
+      // Radial glow blob — the signature Alchemy look
+      const grd = ctx2d.createRadialGradient(px, py, 0, px, py, pr);
+      grd.addColorStop(0,   `hsla(${p.hue}, 100%, ${bright+30}%, ${alpha})`);
+      grd.addColorStop(0.4, `hsla(${p.hue}, 100%, ${bright}%, ${alpha * 0.7})`);
+      grd.addColorStop(1,   `hsla(${p.hue}, 100%, ${bright-10}%, 0)`);
+
       ctx2d.beginPath();
-      ctx2d.strokeStyle = pass === 0 ? `${accent}44` : accent;
-      ctx2d.lineWidth   = pass === 0 ? 5 : 1.8;
-      ctx2d.shadowColor = accent;
-      ctx2d.shadowBlur  = pass === 0 ? 18 : 6;
-      for (let i = 0; i < wave.length; i++) {
-        const x = (i / wave.length) * W;
-        const y = ((wave[i] - 128) / 128) * (H * 0.42) + H/2;
-        i === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
-      }
-      ctx2d.stroke();
-    }
-    ctx2d.shadowBlur = 0;
-
-    // Center guide line
-    ctx2d.strokeStyle = 'rgba(100,180,255,0.15)';
-    ctx2d.lineWidth = 1;
-    ctx2d.setLineDash([4,6]);
-    ctx2d.beginPath(); ctx2d.moveTo(0,H/2); ctx2d.lineTo(W,H/2); ctx2d.stroke();
-    ctx2d.setLineDash([]);
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // VIZ 3 — Starfield
-  // ─────────────────────────────────────────────────────────────
-  function drawStarfield(W, H, freq, accent, t, stars) {
-    ctx2d.fillStyle = 'rgba(0,0,8,0.25)';
-    ctx2d.fillRect(0,0,W,H);
-
-    const avgVol = freq.reduce((a,b)=>a+b,0)/freq.length/255;
-    const speed  = 0.5 + avgVol * 4;
-
-    for (const s of stars) {
-      s.x += s.vx * speed;
-      s.y += s.vy * speed;
-      if (s.x < 0) s.x = 1; if (s.x > 1) s.x = 0;
-      if (s.y < 0) s.y = 1; if (s.y > 1) s.y = 0;
-
-      const brightness = 0.3 + 0.7*(Math.sin(t*2+s.bright*10)*.5+.5);
-      const hue = (t*20 + s.bright*360) % 360;
-      ctx2d.beginPath();
-      ctx2d.arc(s.x*W, s.y*H, s.size*(0.5+avgVol*2), 0, Math.PI*2);
-      ctx2d.fillStyle = `hsla(${hue},80%,80%,${brightness})`;
-      ctx2d.shadowColor = `hsl(${hue},100%,70%)`;
-      ctx2d.shadowBlur = s.size * 3 * (1+avgVol*3);
+      ctx2d.arc(px, py, pr, 0, Math.PI*2);
+      ctx2d.fillStyle = grd;
       ctx2d.fill();
     }
-    ctx2d.shadowBlur = 0;
 
-    // Beat flash
-    if (avgVol > 0.6) {
-      const flash = ctx2d.createRadialGradient(W/2,H/2,0, W/2,H/2,W*0.6);
-      flash.addColorStop(0, `${accent}33`);
-      flash.addColorStop(1, 'transparent');
+    // Beat-pulse: bright radial flash on big bass hits
+    if (bassVol > 0.55) {
+      const flash = ctx2d.createRadialGradient(W/2, H/2, 0, W/2, H/2, W * 0.5);
+      const fHue  = (t * 80) % 360;
+      flash.addColorStop(0,   `hsla(${fHue}, 100%, 80%, ${(bassVol-0.55)*0.5})`);
+      flash.addColorStop(1,   'transparent');
       ctx2d.fillStyle = flash;
-      ctx2d.fillRect(0,0,W,H);
+      ctx2d.fillRect(0, 0, W, H);
     }
   }
 
   // ─────────────────────────────────────────────────────────────
-  // VIZ 4 — Fire
+  // VIZ 2 — Scope  (WMP classic oscilloscope)
+  // Bright waveform on dark gridded background, exactly like WMP
   // ─────────────────────────────────────────────────────────────
-  function drawFire(W, H, freq, accent, t, fire) {
-    const COLS = 80, ROWS = 50;
+  function drawScope(W, H, wave, accent, t) {
+    ctx2d.fillStyle = '#050508';
+    ctx2d.fillRect(0, 0, W, H);
 
-    // Seed bottom row from bass frequencies
-    const bassAvg = freq.slice(0, 12).reduce((a,b)=>a+b,0) / 12;
-    for (let x = 0; x < COLS; x++) {
-      fire[(ROWS-1)*COLS + x] = bassAvg > 20
-        ? Math.min(255, bassAvg + Math.random()*60)
-        : Math.random() < 0.3 ? Math.random()*80 : 0;
-    }
-
-    // Propagate upward
-    for (let y = 0; y < ROWS-1; y++) {
-      for (let x = 0; x < COLS; x++) {
-        const sum = fire[y*COLS+((x-1+COLS)%COLS)]
-                  + fire[(y+1)*COLS+x]
-                  + fire[y*COLS+((x+1)%COLS)]
-                  + fire[(y+2<ROWS?(y+2):ROWS-1)*COLS+x];
-        fire[y*COLS+x] = Math.max(0, (sum * 0.245) - (Math.random()<0.3?1:0));
+    // Fine dot-grid background (authentic WMP scope look)
+    ctx2d.fillStyle = 'rgba(0,80,100,0.35)';
+    const gx = W / 16, gy = H / 10;
+    for (let x = gx; x < W; x += gx) {
+      for (let y = gy; y < H; y += gy) {
+        ctx2d.fillRect(x - 0.5, y - 0.5, 1, 1);
       }
     }
 
-    // Draw
-    ctx2d.fillStyle = '#000';
-    ctx2d.fillRect(0,0,W,H);
-    const cw = W/COLS, ch = H/ROWS;
-    for (let y = 0; y < ROWS; y++) {
-      for (let x = 0; x < COLS; x++) {
-        const v = fire[y*COLS+x];
-        if (v < 2) continue;
-        const t2 = v / 255;
-        const r = Math.min(255, t2*3*255);
-        const g = Math.max(0, Math.min(255, (t2-0.33)*3*255));
-        const b = Math.max(0, Math.min(255, (t2-0.66)*3*255));
-        ctx2d.fillStyle = `rgb(${r|0},${g|0},${b|0})`;
-        ctx2d.fillRect(x*cw, y*ch, cw+1, ch+1);
+    // Horizontal center rule
+    ctx2d.strokeStyle = 'rgba(0,150,180,0.2)';
+    ctx2d.lineWidth = 1;
+    ctx2d.setLineDash([3, 5]);
+    ctx2d.beginPath(); ctx2d.moveTo(0, H/2); ctx2d.lineTo(W, H/2); ctx2d.stroke();
+    ctx2d.setLineDash([]);
+
+    // Outer glow pass
+    ctx2d.beginPath();
+    ctx2d.lineWidth   = 6;
+    ctx2d.strokeStyle = 'rgba(0,255,180,0.08)';
+    ctx2d.shadowColor = '#00ffb8';
+    ctx2d.shadowBlur  = 20;
+    for (let i = 0; i < wave.length; i++) {
+      const x = (i / (wave.length - 1)) * W;
+      const y = H/2 + ((wave[i] - 128) / 128) * (H * 0.44);
+      i === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
+    }
+    ctx2d.stroke();
+
+    // Mid glow
+    ctx2d.beginPath();
+    ctx2d.lineWidth   = 2.5;
+    ctx2d.strokeStyle = 'rgba(0,255,180,0.5)';
+    ctx2d.shadowBlur  = 8;
+    for (let i = 0; i < wave.length; i++) {
+      const x = (i / (wave.length - 1)) * W;
+      const y = H/2 + ((wave[i] - 128) / 128) * (H * 0.44);
+      i === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
+    }
+    ctx2d.stroke();
+
+    // Sharp bright core line
+    ctx2d.beginPath();
+    ctx2d.lineWidth   = 1;
+    ctx2d.strokeStyle = '#aaffee';
+    ctx2d.shadowBlur  = 3;
+    for (let i = 0; i < wave.length; i++) {
+      const x = (i / (wave.length - 1)) * W;
+      const y = H/2 + ((wave[i] - 128) / 128) * (H * 0.44);
+      i === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
+    }
+    ctx2d.stroke();
+    ctx2d.shadowBlur = 0;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // VIZ 3 — Battery  (WMP Battery visualization)
+  // Vertical illuminated meter columns, like analog VU meters
+  // ─────────────────────────────────────────────────────────────
+  const battPeak  = [];   // per-column peak
+  const battTimer = [];
+
+  function drawBattery(W, H, freq, t) {
+    ctx2d.fillStyle = '#020204';
+    ctx2d.fillRect(0, 0, W, H);
+
+    const cols   = 20;
+    const segs   = 18;           // segments per column
+    const cw     = W / cols;
+    const pad    = 3;
+    const segH   = (H - pad * (segs + 1)) / segs;
+    const step   = Math.floor(freq.length / cols);
+
+    while (battPeak.length  < cols) { battPeak.push(0); battTimer.push(0); }
+
+    for (let c = 0; c < cols; c++) {
+      const raw   = freq[c * step] / 255;
+      const level = Math.round(raw * segs);
+
+      // Peak hold
+      if (level > battPeak[c]) { battPeak[c] = level; battTimer[c] = 30; }
+      else { battTimer[c]--; if (battTimer[c] < 0) battPeak[c] = Math.max(0, battPeak[c] - 1); }
+
+      const x = c * cw + pad;
+      const bw2 = cw - pad * 2;
+
+      for (let s = 0; s < segs; s++) {
+        const sy   = H - pad - (s + 1) * (segH + pad);
+        const frac = s / segs;
+
+        // Color: green (bottom) → yellow (mid) → red (top) — authentic WMP Battery look
+        let r, g, b;
+        if (frac < 0.6)       { r=0;   g=210; b=80; }
+        else if (frac < 0.8)  { r=220; g=200; b=0; }
+        else                  { r=255; g=40;  b=20; }
+
+        const lit = s < level;
+        if (lit) {
+          // Lit segment with glow
+          ctx2d.shadowColor = `rgb(${r},${g},${b})`;
+          ctx2d.shadowBlur  = 6;
+          ctx2d.fillStyle   = `rgb(${r},${g},${b})`;
+          ctx2d.fillRect(x, sy, bw2, segH);
+
+          // Bright top highlight on each segment
+          ctx2d.fillStyle = `rgba(255,255,255,0.25)`;
+          ctx2d.fillRect(x, sy, bw2, 2);
+        } else {
+          // Dark unlit segment
+          ctx2d.shadowBlur = 0;
+          ctx2d.fillStyle  = `rgba(${r},${g},${b},0.08)`;
+          ctx2d.fillRect(x, sy, bw2, segH);
+        }
+      }
+      ctx2d.shadowBlur = 0;
+
+      // Peak segment — bright white tick
+      if (battPeak[c] > 0 && battPeak[c] <= segs) {
+        const ps = battPeak[c] - 1;
+        const py = H - pad - (ps + 1) * (segH + pad);
+        ctx2d.fillStyle = '#ffffff';
+        ctx2d.fillRect(x, py, bw2, 2);
       }
     }
+
+    // Column separators
+    ctx2d.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx2d.lineWidth = 1;
+    for (let c = 1; c < cols; c++) {
+      ctx2d.beginPath();
+      ctx2d.moveTo(c * cw, 0);
+      ctx2d.lineTo(c * cw, H);
+      ctx2d.stroke();
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // VIZ 4 — Spikes  (WMP circular spike / porcupine viz)
+  // Symmetric spikes radiating outward, rotating slowly
+  // ─────────────────────────────────────────────────────────────
+  function drawSpikes(W, H, freq, wave, t) {
+    // Slow fade for motion blur trail
+    ctx2d.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx2d.fillRect(0, 0, W, H);
+
+    const cx   = W / 2, cy = H / 2;
+    const spokes = 128;
+    const step   = Math.floor(freq.length / spokes);
+    const baseR  = Math.min(W, H) * 0.10;
+    const maxR   = Math.min(W, H) * 0.46;
+    const rotSpd = t * 0.18;                        // slow rotation
+
+    // Two rings of spikes (inner smooth, outer sharp) — like WMP Spikes preset
+    for (let pass = 0; pass < 2; pass++) {
+      for (let i = 0; i < spokes; i++) {
+        const v   = freq[Math.min(i * step, freq.length - 1)] / 255;
+        const ang = (i / spokes) * Math.PI * 2 + rotSpd * (pass === 0 ? 1 : -0.7);
+        const r2  = baseR + v * (maxR - baseR) * (pass === 0 ? 1 : 0.6);
+        const r1  = baseR * (pass === 0 ? 1 : 0.5);
+
+        const hue  = (i / spokes * 360 + t * 50 + pass * 120) % 360;
+        const sat  = 100;
+        const lite = 45 + v * 30;
+
+        ctx2d.beginPath();
+        ctx2d.moveTo(cx + Math.cos(ang) * r1, cy + Math.sin(ang) * r1);
+        ctx2d.lineTo(cx + Math.cos(ang) * r2, cy + Math.sin(ang) * r2);
+        ctx2d.strokeStyle = `hsla(${hue},${sat}%,${lite}%,${0.6 + v * 0.4})`;
+        ctx2d.lineWidth   = pass === 0 ? 1.5 : 0.8;
+        ctx2d.shadowColor = `hsl(${hue},100%,65%)`;
+        ctx2d.shadowBlur  = pass === 0 ? 5 + v * 8 : 3;
+        ctx2d.stroke();
+      }
+    }
+    ctx2d.shadowBlur = 0;
+
+    // Center orb — pulses with average volume
+    const avgVol = freq.reduce((a,b)=>a+b,0) / freq.length / 255;
+    const orbR   = baseR * (0.6 + avgVol * 0.8);
+    const orbHue = (t * 70) % 360;
+    const orb    = ctx2d.createRadialGradient(cx, cy, 0, cx, cy, orbR);
+    orb.addColorStop(0,   `hsla(${orbHue}, 100%, 90%, 0.95)`);
+    orb.addColorStop(0.5, `hsla(${orbHue}, 100%, 60%, 0.6)`);
+    orb.addColorStop(1,   `hsla(${orbHue}, 100%, 30%, 0)`);
+    ctx2d.beginPath();
+    ctx2d.arc(cx, cy, orbR, 0, Math.PI*2);
+    ctx2d.fillStyle = orb;
+    ctx2d.fill();
   }
 
 })();
