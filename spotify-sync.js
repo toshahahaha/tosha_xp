@@ -14,7 +14,7 @@
   const CONFIG = window.SPOTIFY_CONFIG || {};
   const PLAYLIST_ID = CONFIG.playlistId || '';
   const POLL_MS     = CONFIG.pollMs     || 10000;
-  const TOKEN_URL   = CONFIG.tokenUrl   || 'https://agent-69bedef28945e45--roaring-florentine-4582da.netlify.app/.netlify/functions/spotify-token';
+  const TOKEN_URL   = CONFIG.tokenUrl   || 'https://roaring-florentine-4582da.netlify.app/.netlify/functions/spotify-token';
 
   if (!PLAYLIST_ID) {
     console.warn('[SpotifySync] No playlistId configured — sync disabled.');
