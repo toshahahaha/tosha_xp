@@ -662,13 +662,18 @@
   <!-- =================== TASKBAR =================== -->
   <div id="taskbar">
     <button class="start-btn" id="start-btn" onclick="toggleStartMenu()">
-      <svg class="start-win-logo" viewBox="0 0 22 22" fill="none">
-        <rect x="0" y="0" width="10" height="10" rx="1" fill="#f25022"/>
-        <rect x="12" y="0" width="10" height="10" rx="1" fill="#7fba00"/>
-        <rect x="0" y="12" width="10" height="10" rx="1" fill="#00a4ef"/>
-        <rect x="12" y="12" width="10" height="10" rx="1" fill="#ffb900"/>
+      <!-- Classic XP Windows flag: waving colored panes -->
+      <svg class="start-win-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Red pane (top-left) -->
+        <path d="M1 1 L12 2.5 L12 11.5 L1 11 Z" fill="#f25022"/>
+        <!-- Green pane (top-right) -->
+        <path d="M13 2.7 L23 1 L23 11 L13 11.5 Z" fill="#7fba00"/>
+        <!-- Blue pane (bottom-left) -->
+        <path d="M1 13 L12 12.5 L12 21.5 L1 23 Z" fill="#00a4ef"/>
+        <!-- Yellow pane (bottom-right) -->
+        <path d="M13 12.5 L23 13 L23 23 L13 21.3 Z" fill="#ffb900"/>
       </svg>
-      start
+      <span class="start-btn-text">start</span>
     </button>
 
     <div class="taskbar-windows" id="taskbar-windows"></div>
@@ -683,91 +688,175 @@
 
   <!-- =================== START MENU =================== -->
   <div id="start-menu">
+    <!-- Header: blue gradient with avatar + name -->
     <div class="sm-header">
       <div class="sm-avatar"><img src="avatar.png" alt="Tosha"/></div>
       <div class="sm-user-name">Tosha</div>
     </div>
+
     <div class="sm-body">
+
+      <!-- LEFT column: pinned apps + separator + All Programs -->
       <div class="sm-left">
-        <div class="sm-item" onclick="openWindow('my-projects'); toggleStartMenu()">
-          <div class="sm-icon">🌐</div>
+
+        <!-- Pinned: My Projects (bold, with subtitle) -->
+        <div class="sm-item sm-item--pinned" onclick="openWindow('my-projects'); toggleStartMenu()">
+          <div class="sm-icon">
+            <!-- IE-style globe icon -->
+            <svg width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="#0090d8"/><ellipse cx="16" cy="16" rx="8" ry="14" fill="none" stroke="white" stroke-width="1.2"/><ellipse cx="16" cy="16" rx="14" ry="6" fill="none" stroke="white" stroke-width="1.2"/><line x1="2" y1="16" x2="30" y2="16" stroke="white" stroke-width="1.2"/><line x1="16" y1="2" x2="16" y2="30" stroke="white" stroke-width="1.2"/></svg>
+          </div>
           <div class="sm-item-text">
             <div class="sm-item-main">My Projects</div>
             <div class="sm-item-sub">View my work</div>
           </div>
         </div>
-        <div class="sm-item" onclick="openWindow('contact-me'); toggleStartMenu()">
-          <div class="sm-icon">✉️</div>
+
+        <!-- Pinned: Contact Me (bold, with subtitle) -->
+        <div class="sm-item sm-item--pinned" onclick="openWindow('contact-me'); toggleStartMenu()">
+          <div class="sm-icon">
+            <!-- Blue refresh arrows like XP sync icon -->
+            <svg width="32" height="32" viewBox="0 0 32 32"><path d="M6 10 A12 12 0 0 1 28 16" fill="none" stroke="#4a8be8" stroke-width="3" stroke-linecap="round"/><polygon points="4,6 4,14 12,10" fill="#4a8be8"/><path d="M26 22 A12 12 0 0 1 4 16" fill="none" stroke="#4a8be8" stroke-width="3" stroke-linecap="round"/><polygon points="28,26 28,18 20,22" fill="#4a8be8"/></svg>
+          </div>
           <div class="sm-item-text">
             <div class="sm-item-main">Contact Me</div>
             <div class="sm-item-sub">Send me a message</div>
           </div>
         </div>
+
         <div class="sm-separator"></div>
+
+        <!-- About Me -->
         <div class="sm-item" onclick="openWindow('about-me'); toggleStartMenu()">
-          <div class="sm-icon">👤</div>
+          <div class="sm-icon">
+            <svg width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="#316ac5"/><circle cx="16" cy="12" r="5" fill="#f9c5a0"/><ellipse cx="16" cy="24" rx="9" ry="6" fill="#5589de"/></svg>
+          </div>
           <div class="sm-item-text"><div class="sm-item-main">About Me</div></div>
         </div>
+
+        <!-- Music Player -->
         <div class="sm-item" onclick="openWindow('music-player'); toggleStartMenu()">
-          <div class="sm-icon">🎵</div>
+          <div class="sm-icon">
+            <!-- iPod-style music icon -->
+            <svg width="32" height="32" viewBox="0 0 32 32"><rect x="6" y="2" width="20" height="28" rx="3" fill="#2a2a2a"/><rect x="8" y="4" width="16" height="10" rx="1" fill="#b8c8d8"/><circle cx="16" cy="22" r="5" fill="#444"/><circle cx="16" cy="22" r="2" fill="#888"/></svg>
+          </div>
           <div class="sm-item-text"><div class="sm-item-main">Music Player</div></div>
         </div>
+
+        <!-- Media Player -->
         <div class="sm-item">
-          <div class="sm-icon">▶️</div>
+          <div class="sm-icon">
+            <!-- WMP-style icon -->
+            <svg width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="#1a6a1a"/><circle cx="16" cy="16" r="10" fill="#2a9a2a"/><polygon points="13,11 13,21 22,16" fill="white"/></svg>
+          </div>
           <div class="sm-item-text"><div class="sm-item-main">Media Player</div></div>
         </div>
+
+        <!-- Paint -->
         <div class="sm-item" onclick="openWindow('paint'); toggleStartMenu()">
-          <div class="sm-icon">🖼️</div>
+          <div class="sm-icon">
+            <!-- Paintbrush icon with color splashes -->
+            <svg width="32" height="32" viewBox="0 0 32 32"><rect x="2" y="26" width="28" height="4" rx="1" fill="#e0d0a0"/><rect x="4" y="22" width="6" height="6" fill="#e05030"/><rect x="12" y="22" width="6" height="6" fill="#30a030"/><rect x="20" y="22" width="6" height="6" fill="#3060d0"/><path d="M14 4 L18 4 L20 20 L12 20 Z" fill="#c8a070"/><path d="M15 18 L17 18 L17 22 L15 22 Z" fill="#b09060"/></svg>
+          </div>
           <div class="sm-item-text"><div class="sm-item-main">Paint</div></div>
         </div>
+
+        <!-- DoodleDev / Minecraft -->
         <div class="sm-item" onclick="openWindow('minecraft'); toggleStartMenu()">
-          <div class="sm-icon">⛏️</div>
-          <div class="sm-item-text"><div class="sm-item-main">Minecraft</div><div class="sm-item-sub">Alpha 1.0.16_02</div></div>
+          <div class="sm-icon">
+            <!-- DD block icon like reference -->
+            <svg width="32" height="32" viewBox="0 0 32 32"><rect x="1" y="1" width="30" height="30" rx="4" fill="#2a5a2a" stroke="#1a3a1a" stroke-width="1"/><text x="16" y="23" text-anchor="middle" font-family="Arial Black, sans-serif" font-weight="900" font-size="16" fill="#7aff7a">DD</text></svg>
+          </div>
+          <div class="sm-item-text"><div class="sm-item-main">DoodleDev</div></div>
         </div>
+
         <div class="sm-separator"></div>
-        <div class="sm-item">
-          <div class="sm-icon">🗂️</div>
-          <div class="sm-item-text"><div class="sm-item-main" style="font-size:11px;">All Programs ▶</div></div>
+
+        <!-- All Programs -->
+        <div class="sm-item sm-item--allprograms">
+          <div class="sm-item-text"><div class="sm-item-main">All Programs</div></div>
+          <svg class="sm-arrow-right" width="10" height="16" viewBox="0 0 10 16"><polygon points="2,2 8,8 2,14" fill="#1a5a1a"/></svg>
         </div>
-      </div>
+
+      </div><!-- /sm-left -->
+
+      <!-- RIGHT column: social links + utilities -->
       <div class="sm-right">
-        <div class="sm-item">
-          <div class="sm-icon">📷</div>
+
+        <!-- Instagram -->
+        <div class="sm-item sm-item--right">
+          <div class="sm-icon sm-icon--right">
+            <svg width="28" height="28" viewBox="0 0 28 28"><defs><linearGradient id="ig" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#f09433"/><stop offset="25%" stop-color="#e6683c"/><stop offset="50%" stop-color="#dc2743"/><stop offset="75%" stop-color="#cc2366"/><stop offset="100%" stop-color="#bc1888"/></linearGradient></defs><rect width="28" height="28" rx="7" fill="url(#ig)"/><rect x="5" y="5" width="18" height="18" rx="5" fill="none" stroke="white" stroke-width="2"/><circle cx="14" cy="14" r="5" fill="none" stroke="white" stroke-width="2"/><circle cx="20.5" cy="7.5" r="1.5" fill="white"/></svg>
+          </div>
           <div class="sm-item-text"><div class="sm-item-main">Instagram</div></div>
         </div>
-        <div class="sm-item" onclick="window.open('https://github.com/toshahahaha','_blank')">
-          <div class="sm-icon">🐙</div>
-          <div class="sm-item-text"><div class="sm-item-main">GitHub</div></div>
+
+        <!-- GitHub -->
+        <div class="sm-item sm-item--right" onclick="window.open('https://github.com/toshahahaha','_blank')">
+          <div class="sm-icon sm-icon--right">
+            <svg width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="13" fill="#1a1a1a"/><path d="M14 5.5a9 9 0 0 0-2.845 17.54c.45.083.615-.195.615-.433 0-.214-.008-.78-.012-1.53-2.504.544-3.032-1.207-3.032-1.207-.41-1.04-1-1.317-1-1.317-.817-.558.062-.547.062-.547.903.064 1.378.927 1.378.927.802 1.374 2.105.977 2.618.747.08-.58.314-.977.572-1.201-1.997-.228-4.097-1-4.097-4.448 0-.982.35-1.786.927-2.416-.093-.227-.402-1.143.087-2.382 0 0 .756-.242 2.476.923A8.61 8.61 0 0 1 14 9.48c.765.004 1.534.104 2.253.303 1.718-1.165 2.473-.923 2.473-.923.49 1.24.182 2.155.09 2.382.578.63.925 1.434.925 2.416 0 3.458-2.104 4.218-4.107 4.44.323.28.61.83.61 1.674 0 1.208-.01 2.183-.01 2.48 0 .24.163.52.62.432A9.001 9.001 0 0 0 14 5.5z" fill="white"/></svg>
+          </div>
+          <div class="sm-item-text"><div class="sm-item-main">Github</div></div>
         </div>
-        <div class="sm-item" onclick="window.open('https://www.linkedin.com/in/tosha-ha/','_blank')">
-          <div class="sm-icon">💼</div>
+
+        <!-- LinkedIn -->
+        <div class="sm-item sm-item--right" onclick="window.open('https://www.linkedin.com/in/tosha-ha/','_blank')">
+          <div class="sm-icon sm-icon--right">
+            <svg width="28" height="28" viewBox="0 0 28 28"><rect width="28" height="28" rx="5" fill="#0077b5"/><rect x="5" y="10" width="5" height="13" fill="white"/><circle cx="7.5" cy="7.5" r="2.5" fill="white"/><path d="M14 10 h4 a5 5 0 0 1 5 5 v8 h-5 v-7 a2 2 0 0 0-4 0 v7 h-5 v-13 h5 z" fill="white"/></svg>
+          </div>
           <div class="sm-item-text"><div class="sm-item-main">LinkedIn</div></div>
         </div>
+
         <div class="sm-separator"></div>
-        <div class="sm-item">
-          <div class="sm-icon">🕑</div>
-          <div class="sm-item-text"><div class="sm-item-main">Recently Used ▶</div></div>
+
+        <!-- Recently Used -->
+        <div class="sm-item sm-item--right sm-item--has-arrow">
+          <div class="sm-icon sm-icon--right">
+            <svg width="28" height="28" viewBox="0 0 28 28"><rect x="3" y="3" width="22" height="22" rx="3" fill="#e8e4d8" stroke="#999" stroke-width="1"/><circle cx="14" cy="14" r="8" fill="none" stroke="#666" stroke-width="1.5"/><line x1="14" y1="14" x2="14" y2="8" stroke="#333" stroke-width="1.5" stroke-linecap="round"/><line x1="14" y1="14" x2="18" y2="14" stroke="#333" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </div>
+          <div class="sm-item-text"><div class="sm-item-main">Recently Used</div></div>
+          <span class="sm-sub-arrow">▶</span>
         </div>
-        <div class="sm-item">
-          <div class="sm-icon">⌨️</div>
+
+        <!-- Command Prompt -->
+        <div class="sm-item sm-item--right">
+          <div class="sm-icon sm-icon--right">
+            <svg width="28" height="28" viewBox="0 0 28 28"><rect width="28" height="28" rx="2" fill="#1a1a1a"/><rect x="1" y="1" width="26" height="5" fill="#000080"/><text x="3" y="13" font-family="monospace" font-size="7" fill="#c0c0c0">C:\&gt;_</text><text x="3" y="20" font-family="monospace" font-size="6" fill="#808080">C:\&gt;</text></svg>
+          </div>
           <div class="sm-item-text"><div class="sm-item-main">Command Prompt</div></div>
         </div>
-        <div class="sm-item">
-          <div class="sm-icon">🖼️</div>
+
+        <!-- Image Viewer -->
+        <div class="sm-item sm-item--right">
+          <div class="sm-icon sm-icon--right">
+            <svg width="28" height="28" viewBox="0 0 28 28"><rect x="1" y="3" width="26" height="22" rx="2" fill="#5a9e3a" stroke="#3a7a2a" stroke-width="1"/><rect x="3" y="5" width="22" height="16" rx="1" fill="#7abe5a"/><polygon points="3,21 10,12 15,17 19,13 25,21" fill="#5a9e3a"/><circle cx="8" cy="9" r="2" fill="#ffe080"/></svg>
+          </div>
           <div class="sm-item-text"><div class="sm-item-main">Image Viewer</div></div>
         </div>
-        <div class="sm-item" onclick="openWindow('my-resume'); toggleStartMenu()">
-          <div class="sm-icon">📄</div>
+
+        <!-- My Resume -->
+        <div class="sm-item sm-item--right" onclick="openWindow('my-resume'); toggleStartMenu()">
+          <div class="sm-icon sm-icon--right">
+            <svg width="28" height="28" viewBox="0 0 28 28"><rect x="4" y="2" width="20" height="24" rx="1" fill="white" stroke="#c00" stroke-width="1.5"/><rect x="4" y="2" width="20" height="9" rx="1" fill="#cc0000"/><text x="14" y="9" text-anchor="middle" font-family="Arial" font-size="6" fill="white" font-weight="bold">PDF</text><rect x="8" y="14" width="12" height="1.5" fill="#ccc"/><rect x="8" y="17" width="12" height="1.5" fill="#ccc"/><rect x="8" y="20" width="8" height="1.5" fill="#ccc"/></svg>
+          </div>
           <div class="sm-item-text"><div class="sm-item-main">My Resume</div></div>
         </div>
-      </div>
-    </div>
+
+      </div><!-- /sm-right -->
+    </div><!-- /sm-body -->
+
+    <!-- Footer: Log Off + Shut Down with proper XP-style icon buttons -->
     <div class="sm-footer">
       <div class="sm-footer-btn" onclick="doLogOff()">
-        <span>🔒</span> Log Off
+        <div class="sm-footer-icon sm-footer-icon--logoff">
+          <svg width="18" height="18" viewBox="0 0 18 18"><rect x="1" y="1" width="16" height="16" rx="3" fill="#d4a020"/><path d="M5 5 L5 13 M5 5 Q9 3 13 5 L13 13 Q9 15 5 13" fill="none" stroke="white" stroke-width="1.5"/><circle cx="9" cy="9" r="2" fill="white"/></svg>
+        </div>
+        Log Off
       </div>
       <div class="sm-footer-btn" onclick="doShutdown()">
-        <span>⏻</span> Shut Down
+        <div class="sm-footer-icon sm-footer-icon--shutdown">
+          <svg width="18" height="18" viewBox="0 0 18 18"><rect x="1" y="1" width="16" height="16" rx="3" fill="#cc2020"/><circle cx="9" cy="9" r="5" fill="none" stroke="white" stroke-width="1.8"/><line x1="9" y1="4" x2="9" y2="9" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        Shut Down
       </div>
     </div>
   </div>
