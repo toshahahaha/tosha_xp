@@ -22,7 +22,7 @@
 <body>
 <div class="box">
   <h1>🎵 Spotify → Tosha XP</h1>
-  <p>One-time setup: connect your Spotify account to get a refresh token for the WMP playlist sync.</p>
+  <p>One-time setup: connect your Spotify account to get a refresh token for full song playback + playlist sync. <strong style="color:#fff">Re-run this if you've already done it</strong> — the scopes have been updated to enable Premium playback.</p>
 
   <div class="step"><strong>Step 1:</strong> Click the button below to log in with Spotify</div>
   <div class="step"><strong>Step 2:</strong> Copy the refresh token that appears</div>
@@ -41,7 +41,7 @@
 <script>
   const CLIENT_ID    = '7cd580ba84714012a9dc4a26a656814c';
   const REDIRECT_URI = 'https://roaring-florentine-4582da.netlify.app/spotify-auth.html';
-  const SCOPES       = 'playlist-read-private playlist-read-collaborative';
+  const SCOPES       = 'playlist-read-private playlist-read-collaborative streaming user-read-playback-state user-modify-playback-state user-read-currently-playing';
   const TOKEN_URL    = 'https://roaring-florentine-4582da.netlify.app/.netlify/functions/spotify-token';
 
   // ── PKCE helpers ──────────────────────────────────────────────
