@@ -2512,6 +2512,12 @@ function ipodRewind() {
       return;
     }
 
+    // The UMD build wraps the class under .default
+    const Butterchurn = window.butterchurn.default || window.butterchurn;
+    const getPresets  = window.butterchurnPresets.getPresets
+      ? () => window.butterchurnPresets.getPresets()
+      : () => window.butterchurnPresets.default.getPresets();
+
     // Create AudioContext now (needed by Butterchurn constructor)
     // Audio element is NOT connected yet — that happens on first user gesture
     if (!wmpAudioCtx) {
@@ -2524,7 +2530,7 @@ function ipodRewind() {
     // Resize canvas now so Butterchurn gets correct dimensions
     wmpResizeCanvas();
 
-    wmpVisualizer = window.butterchurn.createVisualizer(wmpAudioCtx, canvas, {
+    wmpVisualizer = Butterchurn.createVisualizer(wmpAudioCtx, canvas, {
       width:  canvas.width,
       height: canvas.height,
       pixelRatio: window.devicePixelRatio || 1,
@@ -2534,8 +2540,9 @@ function ipodRewind() {
     // Connect analyser to Butterchurn
     wmpVisualizer.connectAudio(wmpAnalyser);
 
-    // Load preset list
-    const allPresets = window.butterchurnPresets.getPresets();
+    // Load preset list — store getPresets fn for later use in wmpApplyPreset
+    window._wmpGetPresets = getPresets;
+    const allPresets = getPresets();
     wmpPresetKeys = Object.keys(allPresets);
 
     // Pick a nice starting preset — try a known good one or random
@@ -2554,6 +2561,10 @@ function ipodRewind() {
     if (wmpPresetIdx < 0) wmpPresetIdx = 0;
 
     wmpApplyPreset(wmpPresetKeys[wmpPresetIdx]);
+
+    // Resume AudioContext so Butterchurn renders immediately (visuals run without music)
+    // The browser may re-suspend it; wmpEnsureCtx() resumes again on play click.
+    wmpAudioCtx.resume().catch(() => {});
 
     // Start Butterchurn render loop
     cancelAnimationFrame(wmpVizRaf);
@@ -2579,7 +2590,8 @@ function ipodRewind() {
 
   function wmpApplyPreset(presetName) {
     if (!wmpVisualizer) return;
-    const presets = window.butterchurnPresets.getPresets();
+    const getPresets = window._wmpGetPresets || (() => window.butterchurnPresets.getPresets());
+    const presets = getPresets();
     const preset = presets[presetName];
     if (!preset) return;
     wmpVisualizer.loadPreset(preset, 2.0); // 2s blend transition
