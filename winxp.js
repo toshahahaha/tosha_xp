@@ -2400,118 +2400,254 @@ function ipodRewind() {
 // ===================== WINDOWS MEDIA PLAYER =====================
 (function(){
 
-  // ── Song library (shared with iPod) ──────────────────────────
+  // ── Song library ──────────────────────────────────────────────
   const WMP_SONGS = [
     {
       title:  'iPod Touch',
       artist: 'Ninajirachi',
       album:  'I Love My Computer',
-      src:    'iPod Touch.mp3',
-      color:  '#7b2fff'   // accent colour used in visualizer
+      src:    'iPod Touch.mp3'
     },
     {
       title:  'That Green Gentleman',
       artist: 'Panic! at the Disco',
       album:  'Pretty. Odd.',
-      src:    'That Green Gentleman.mp3',
-      color:  '#2fff7b'
+      src:    'That Green Gentleman.mp3'
     }
   ];
 
   // ── State ────────────────────────────────────────────────────
-  let wmpReady   = false;
   let wmpIdx     = 0;
   let wmpPlaying = false;
   let wmpShuffle = false;
   let wmpRepeat  = false;
-  let wmpViz     = 0;          // current visualisation index
-  let wmpAudioCtx, wmpAnalyser, wmpSource;
-  let wmpRaf = 0;
   let wmpInited  = false;
+  let wmpPresetIdx = 0;
+  let wmpPresetKeys = [];
 
-  // Visualisation names (shown in label) — named after real WMP viz packs
-  const VIZ_NAMES = [
-    'Bars & Waves',   // classic WMP default
-    'Alchemy',        // WMP Alchemy plugin — liquid particle blobs
-    'Scope',          // oscilloscope waveform
-    'Battery',        // WMP Battery viz — vertical gauge meters
-    'Spikes',         // circular spike burst
-  ];
+  // Web Audio / Butterchurn refs
+  let wmpAudioCtx, wmpAnalyser, wmpSource, wmpVisualizer;
+  let wmpVizRaf = 0;
 
-  // ── DOM refs (populated in wmpInit) ─────────────────────────
-  let audio, canvas, ctx2d, playBtn, statusBar, seekFill, seekThumb,
+  // DOM refs
+  let audio, canvas, playBtn, statusBar, seekFill, seekThumb,
       elapsedEl, totalEl, overlayTitle, overlayArtist, vizLabel;
 
   // ─────────────────────────────────────────────────────────────
-  // Public API (called from HTML onclick="wmpXxx()")
+  // Public API
   // ─────────────────────────────────────────────────────────────
-  window.wmpPlayPause  = () => { wmpEnsureCtx(); wmpPlaying ? pause() : play(); };
-  window.wmpStop       = () => { pause(); audio.currentTime = 0; wmpUpdateSeek(); };
-  window.wmpPrev       = () => { wmpLoadTrack((wmpIdx - 1 + WMP_SONGS.length) % WMP_SONGS.length, true); };
-  window.wmpNext       = () => { wmpLoadTrack(wmpShuffle ? wmpRandNext() : (wmpIdx+1) % WMP_SONGS.length, true); };
+  window.wmpPlayPause = () => { wmpEnsureCtx(); wmpPlaying ? pause() : play(); };
+  window.wmpStop      = () => { pause(); if (audio) { audio.currentTime = 0; wmpUpdateSeek(); } };
+  window.wmpPrev      = () => { wmpLoadTrack((wmpIdx - 1 + WMP_SONGS.length) % WMP_SONGS.length, true); };
+  window.wmpNext      = () => { wmpLoadTrack(wmpShuffle ? wmpRandNext() : (wmpIdx+1) % WMP_SONGS.length, true); };
   window.wmpToggleShuffle = () => {
     wmpShuffle = !wmpShuffle;
-    document.getElementById('wmp-shuffle-btn').classList.toggle('active', wmpShuffle);
+    const b = document.getElementById('wmp-shuffle-btn');
+    if (b) b.classList.toggle('active', wmpShuffle);
   };
   window.wmpToggleRepeat = () => {
     wmpRepeat = !wmpRepeat;
-    document.getElementById('wmp-repeat-btn').classList.toggle('active', wmpRepeat);
+    const b = document.getElementById('wmp-repeat-btn');
+    if (b) b.classList.toggle('active', wmpRepeat);
   };
-  window.wmpSetVolume  = v => { if (audio) audio.volume = v / 100; };
-  window.wmpSeek       = e => {
+  window.wmpSetVolume = v => { if (audio) audio.volume = v / 100; };
+  window.wmpSeek = e => {
     const bar = document.getElementById('wmp-seekbar');
+    if (!bar || !audio || !audio.duration) return;
     const pct = Math.max(0, Math.min(1, e.offsetX / bar.clientWidth));
-    if (audio && audio.duration) audio.currentTime = pct * audio.duration;
+    audio.currentTime = pct * audio.duration;
   };
   window.wmpCycleViz = dir => {
-    wmpViz = (wmpViz + dir + VIZ_NAMES.length) % VIZ_NAMES.length;
-    if (vizLabel) vizLabel.textContent = VIZ_NAMES[wmpViz];
+    if (!wmpPresetKeys.length) return;
+    wmpPresetIdx = (wmpPresetIdx + dir + wmpPresetKeys.length) % wmpPresetKeys.length;
+    wmpApplyPreset(wmpPresetKeys[wmpPresetIdx]);
   };
 
   // ─────────────────────────────────────────────────────────────
-  // Init — called once when window first opens
+  // Init — called once when the WMP window first opens
   // ─────────────────────────────────────────────────────────────
   window.wmpInit = function() {
     if (wmpInited) return;
     wmpInited = true;
 
-    audio        = document.getElementById('wmp-audio');
-    canvas       = document.getElementById('wmp-canvas');
-    ctx2d        = canvas.getContext('2d');
-    playBtn      = document.getElementById('wmp-play-btn');
-    statusBar    = document.getElementById('wmp-statusbar');
-    seekFill     = document.getElementById('wmp-seek-fill');
-    seekThumb    = document.getElementById('wmp-seek-thumb');
-    elapsedEl    = document.getElementById('wmp-elapsed');
-    totalEl      = document.getElementById('wmp-total');
+    audio         = document.getElementById('wmp-audio');
+    canvas        = document.getElementById('wmp-canvas');
+    playBtn       = document.getElementById('wmp-play-btn');
+    statusBar     = document.getElementById('wmp-statusbar');
+    seekFill      = document.getElementById('wmp-seek-fill');
+    seekThumb     = document.getElementById('wmp-seek-thumb');
+    elapsedEl     = document.getElementById('wmp-elapsed');
+    totalEl       = document.getElementById('wmp-total');
     overlayTitle  = document.getElementById('wmp-overlay-title');
     overlayArtist = document.getElementById('wmp-overlay-artist');
-    vizLabel     = document.getElementById('wmp-viz-label');
+    vizLabel      = document.getElementById('wmp-viz-label');
 
     audio.volume = 0.8;
-
-    // timeupdate → seek bar
     audio.addEventListener('timeupdate', wmpUpdateSeek);
-    // ended → auto-advance
     audio.addEventListener('ended', () => {
       if (wmpRepeat) { audio.currentTime = 0; play(); }
       else window.wmpNext();
     });
 
-    // Build playlist sidebar
+    // Size the canvas to fill its container
+    wmpResizeCanvas();
+    new ResizeObserver(wmpResizeCanvas).observe(canvas.parentElement);
+
+    // Build playlist
     wmpBuildPlaylist();
 
-    // Load first track (no autoplay — user must press play)
+    // Load first track (no autoplay until user clicks)
     wmpLoadTrack(0, false);
 
-    // Start idle visualizer loop
-    wmpStartVizLoop();
-
-    // Resize canvas when window resizes
-    const resizeObs = new ResizeObserver(wmpResizeCanvas);
-    resizeObs.observe(canvas.parentElement);
-    wmpResizeCanvas();
+    // Start idle canvas loop (draws black until Butterchurn kicks in)
+    wmpIdleLoop();
   };
+
+  // ─────────────────────────────────────────────────────────────
+  // Web Audio + Butterchurn setup (on first user gesture)
+  // ─────────────────────────────────────────────────────────────
+  function wmpEnsureCtx() {
+    if (wmpAudioCtx) {
+      // Resume if suspended (autoplay policy)
+      if (wmpAudioCtx.state === 'suspended') wmpAudioCtx.resume();
+      return;
+    }
+
+    wmpAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    wmpAnalyser = wmpAudioCtx.createAnalyser();
+    wmpAnalyser.fftSize = 2048;
+    wmpAnalyser.smoothingTimeConstant = 0.8;
+
+    // Connect audio element → analyser → output
+    wmpSource = wmpAudioCtx.createMediaElementSource(audio);
+    wmpSource.connect(wmpAnalyser);
+    wmpAnalyser.connect(wmpAudioCtx.destination);
+
+    // Boot Butterchurn
+    wmpBootButterchurn();
+  }
+
+  function wmpBootButterchurn() {
+    if (typeof window.butterchurn === 'undefined' || typeof window.butterchurnPresets === 'undefined') {
+      // Butterchurn not loaded yet — fallback idle canvas, retry in 500ms
+      setTimeout(wmpBootButterchurn, 500);
+      return;
+    }
+
+    // Resize canvas now so Butterchurn gets correct dimensions
+    wmpResizeCanvas();
+
+    wmpVisualizer = window.butterchurn.createVisualizer(wmpAudioCtx, canvas, {
+      width:  canvas.width,
+      height: canvas.height,
+      pixelRatio: window.devicePixelRatio || 1,
+      textureRatio: 1
+    });
+
+    // Connect analyser to Butterchurn
+    wmpVisualizer.connectAudio(wmpAnalyser);
+
+    // Load preset list
+    const allPresets = window.butterchurnPresets.getPresets();
+    wmpPresetKeys = Object.keys(allPresets);
+
+    // Pick a nice starting preset — try a known good one or random
+    const preferredStarts = [
+      'Flexi - mass particle system donut',
+      'Unchained - Braindance',
+      'Flexi - against the machine',
+      'Aderrasi + Flexi - Iridescent Corruption',
+      'Flexi - plasma donut',
+    ];
+    let startName = wmpPresetKeys[0];
+    for (const name of preferredStarts) {
+      if (allPresets[name]) { startName = name; break; }
+    }
+    wmpPresetIdx = wmpPresetKeys.indexOf(startName);
+    if (wmpPresetIdx < 0) wmpPresetIdx = 0;
+
+    wmpApplyPreset(wmpPresetKeys[wmpPresetIdx]);
+
+    // Cancel idle loop and start Butterchurn render loop
+    cancelAnimationFrame(wmpVizRaf);
+    wmpRenderLoop();
+  }
+
+  function wmpApplyPreset(presetName) {
+    if (!wmpVisualizer) return;
+    const presets = window.butterchurnPresets.getPresets();
+    const preset = presets[presetName];
+    if (!preset) return;
+    wmpVisualizer.loadPreset(preset, 2.0); // 2s blend transition
+    if (vizLabel) {
+      // Shorten very long preset names for display
+      let label = presetName.replace(/^[^-]+ - /, '');
+      if (label.length > 40) label = label.slice(0, 38) + '…';
+      vizLabel.textContent = label;
+    }
+  }
+
+  // Auto-cycle presets every 30s while playing
+  let wmpPresetTimer = null;
+  function wmpStartPresetCycle() {
+    clearInterval(wmpPresetTimer);
+    wmpPresetTimer = setInterval(() => {
+      if (!wmpPlaying || !wmpPresetKeys.length) return;
+      wmpPresetIdx = (wmpPresetIdx + 1) % wmpPresetKeys.length;
+      wmpApplyPreset(wmpPresetKeys[wmpPresetIdx]);
+    }, 30000);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Render loop (after Butterchurn is ready)
+  // ─────────────────────────────────────────────────────────────
+  function wmpRenderLoop() {
+    const loop = () => {
+      wmpVizRaf = requestAnimationFrame(loop);
+      if (!wmpVisualizer) return;
+      // Only render if the WMP window is visible
+      const win = document.getElementById('media-player');
+      if (!win || !win.classList.contains('show')) return;
+      wmpVisualizer.render();
+    };
+    loop();
+  }
+
+  // Idle loop — draws a dark canvas while Butterchurn isn't ready yet
+  function wmpIdleLoop() {
+    const ctx = canvas.getContext('2d');
+    const loop = () => {
+      // Stop idling once Butterchurn takes over
+      if (wmpVisualizer) return;
+      wmpVizRaf = requestAnimationFrame(loop);
+      if (!canvas.width || !canvas.height) return;
+      ctx.fillStyle = '#000008';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Subtle pulsing dot
+      const t = performance.now() / 1000;
+      const alpha = 0.3 + 0.2 * Math.sin(t * 2);
+      ctx.fillStyle = `rgba(80,160,255,${alpha})`;
+      ctx.beginPath();
+      ctx.arc(canvas.width/2, canvas.height/2, 4 + 2*Math.sin(t*3), 0, Math.PI*2);
+      ctx.fill();
+    };
+    loop();
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Handle canvas resize — also notify Butterchurn
+  // ─────────────────────────────────────────────────────────────
+  function wmpResizeCanvas() {
+    if (!canvas) return;
+    const w = canvas.offsetWidth  || 400;
+    const h = canvas.offsetHeight || 260;
+    if (canvas.width === w && canvas.height === h) return;
+    canvas.width  = w;
+    canvas.height = h;
+    if (wmpVisualizer) {
+      wmpVisualizer.setRendererSize(w, h);
+    }
+  }
 
   // ─────────────────────────────────────────────────────────────
   // Load a track
@@ -2519,15 +2655,14 @@ function ipodRewind() {
   function wmpLoadTrack(idx, autoplay) {
     wmpIdx = idx;
     const song = WMP_SONGS[idx];
+
     audio.src = song.src;
     audio.load();
 
-    // Update overlay
     if (overlayTitle)  overlayTitle.textContent  = song.title;
     if (overlayArtist) overlayArtist.textContent = song.artist;
     if (statusBar)     statusBar.textContent     = `${song.title} — ${song.artist}`;
 
-    // Update playlist highlight
     document.querySelectorAll('.wmp-pl-item').forEach((el, i) => {
       el.classList.toggle('active', i === idx);
       const sym = el.querySelector('.wmp-pl-playing');
@@ -2535,61 +2670,55 @@ function ipodRewind() {
     });
 
     audio.addEventListener('loadedmetadata', () => {
-      totalEl.textContent = fmtTime(audio.duration);
+      if (totalEl) totalEl.textContent = fmtTime(audio.duration);
       wmpUpdateSeek();
     }, { once: true });
 
     if (autoplay) play();
-    else { wmpPlaying = false; playBtn.textContent = '▶'; }
+    else {
+      wmpPlaying = false;
+      if (playBtn) playBtn.textContent = '▶';
+    }
   }
 
   // ─────────────────────────────────────────────────────────────
-  // Play / Pause helpers
+  // Play / Pause
   // ─────────────────────────────────────────────────────────────
   function play() {
     wmpEnsureCtx();
     audio.play().then(() => {
       wmpPlaying = true;
-      playBtn.textContent = '⏸';
-      statusBar.textContent = `▶ Playing — ${WMP_SONGS[wmpIdx].title}`;
-    }).catch(() => {});
+      if (playBtn) playBtn.textContent = '⏸';
+      if (statusBar) statusBar.textContent = `▶ Playing — ${WMP_SONGS[wmpIdx].title}`;
+      wmpStartPresetCycle();
+    }).catch(err => {
+      console.warn('WMP play blocked:', err);
+    });
   }
 
   function pause() {
+    if (!audio) return;
     audio.pause();
     wmpPlaying = false;
-    playBtn.textContent = '▶';
-    statusBar.textContent = `⏸ Paused — ${WMP_SONGS[wmpIdx].title}`;
+    if (playBtn) playBtn.textContent = '▶';
+    if (statusBar) statusBar.textContent = `⏸ Paused — ${WMP_SONGS[wmpIdx].title}`;
+    clearInterval(wmpPresetTimer);
   }
 
   // ─────────────────────────────────────────────────────────────
-  // Web Audio API setup
-  // ─────────────────────────────────────────────────────────────
-  function wmpEnsureCtx() {
-    if (wmpAudioCtx) return;
-    wmpAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    wmpAnalyser = wmpAudioCtx.createAnalyser();
-    wmpAnalyser.fftSize = 512;
-    wmpAnalyser.smoothingTimeConstant = 0.82;
-    wmpSource = wmpAudioCtx.createMediaElementSource(audio);
-    wmpSource.connect(wmpAnalyser);
-    wmpAnalyser.connect(wmpAudioCtx.destination);
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // Seek bar update
+  // Seek bar
   // ─────────────────────────────────────────────────────────────
   function wmpUpdateSeek() {
     if (!audio || !audio.duration) return;
     const pct = audio.currentTime / audio.duration;
-    if (seekFill)  seekFill.style.width  = (pct * 100) + '%';
-    if (seekThumb) seekThumb.style.left  = (pct * 100) + '%';
+    if (seekFill)  seekFill.style.width = (pct * 100) + '%';
+    if (seekThumb) seekThumb.style.left = (pct * 100) + '%';
     if (elapsedEl) elapsedEl.textContent = fmtTime(audio.currentTime);
-    if (totalEl && audio.duration) totalEl.textContent = fmtTime(audio.duration);
+    if (totalEl)   totalEl.textContent   = fmtTime(audio.duration);
   }
 
   // ─────────────────────────────────────────────────────────────
-  // Build playlist sidebar
+  // Playlist sidebar
   // ─────────────────────────────────────────────────────────────
   function wmpBuildPlaylist() {
     const list = document.getElementById('wmp-playlist');
@@ -2598,7 +2727,7 @@ function ipodRewind() {
     WMP_SONGS.forEach((s, i) => {
       const el = document.createElement('div');
       el.className = 'wmp-pl-item' + (i === 0 ? ' active' : '');
-      el.onclick = () => wmpLoadTrack(i, true);
+      el.onclick = () => { wmpEnsureCtx(); wmpLoadTrack(i, true); };
       el.innerHTML = `
         <div class="wmp-pl-num">${i+1}</div>
         <div class="wmp-pl-info">
@@ -2611,421 +2740,17 @@ function ipodRewind() {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // Canvas resize
+  // Helpers
   // ─────────────────────────────────────────────────────────────
-  function wmpResizeCanvas() {
-    if (!canvas) return;
-    canvas.width  = canvas.offsetWidth  || 400;
-    canvas.height = canvas.offsetHeight || 260;
+  function fmtTime(s) {
+    if (!s || isNaN(s)) return '0:00';
+    return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // Shuffle helper
-  // ─────────────────────────────────────────────────────────────
   function wmpRandNext() {
     let n;
     do { n = Math.floor(Math.random() * WMP_SONGS.length); } while (n === wmpIdx && WMP_SONGS.length > 1);
     return n;
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // TIME FORMAT
-  // ─────────────────────────────────────────────────────────────
-  function fmtTime(s) {
-    if (!s || isNaN(s)) return '0:00';
-    const m = Math.floor(s / 60);
-    const sec = String(Math.floor(s % 60)).padStart(2, '0');
-    return `${m}:${sec}`;
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // VISUALIZER LOOP
-  // ─────────────────────────────────────────────────────────────
-  function wmpStartVizLoop() {
-    let t = 0;
-
-    const loop = () => {
-      wmpRaf = requestAnimationFrame(loop);
-      t += 0.016;
-
-      if (!canvas || !ctx2d) return;
-      const W = canvas.width, H = canvas.height;
-      if (W < 4 || H < 4) return;
-
-      // Get frequency data (real if analyser exists, else fake idle data)
-      const bins = wmpAnalyser ? wmpAnalyser.frequencyBinCount : 128;
-      const freq = new Uint8Array(bins);
-      const wave = new Uint8Array(bins);
-      if (wmpAnalyser) {
-        wmpAnalyser.getByteFrequencyData(freq);
-        wmpAnalyser.getByteTimeDomainData(wave);
-      } else {
-        // idle: gentle sine shimmer
-        for (let i = 0; i < bins; i++) {
-          freq[i] = Math.max(0, 30 + 20*Math.sin(t*1.2 + i*0.15) + 10*Math.sin(t*2.3 + i*0.08));
-          wave[i] = 128 + 15*Math.sin(t*2 + i*0.1);
-        }
-      }
-
-      const accent = WMP_SONGS[wmpIdx]?.color || '#5aafff';
-
-      switch (wmpViz) {
-        case 0: drawBarsWaves(W, H, freq, wave, accent, t); break;
-        case 1: drawAlchemy(W, H, freq, wave, accent, t);   break;
-        case 2: drawScope(W, H, wave, accent, t);           break;
-        case 3: drawBattery(W, H, freq, t);                 break;
-        case 4: drawSpikes(W, H, freq, wave, t);            break;
-      }
-    };
-    loop();
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // VIZ 0 — Bars & Waves  (authentic WMP classic look)
-  // Mirrored bars from center, peak-hold dots, wave riding on top
-  // ─────────────────────────────────────────────────────────────
-  const peakHold   = [];   // peak hold positions per bar
-  const peakTimer  = [];   // timer before peak falls
-
-  function drawBarsWaves(W, H, freq, wave, accent, t) {
-    // Pure black bg — authentic WMP look
-    ctx2d.fillStyle = '#000000';
-    ctx2d.fillRect(0, 0, W, H);
-
-    const barCount = 64;
-    const bw       = W / barCount;
-    const step     = Math.floor(freq.length / barCount);
-    const maxBarH  = H * 0.72;   // bars occupy lower 72% of canvas
-
-    // Init peak arrays
-    while (peakHold.length < barCount)  { peakHold.push(0); peakTimer.push(0); }
-
-    for (let i = 0; i < barCount; i++) {
-      const raw = freq[i * step] / 255;
-      const bh  = raw * maxBarH;
-
-      // Gradient: dark teal → cyan → white-hot at top (just like WMP)
-      const grd = ctx2d.createLinearGradient(0, H, 0, H - bh);
-      grd.addColorStop(0,   '#003a4a');
-      grd.addColorStop(0.4, '#00aacc');
-      grd.addColorStop(0.75,'#00eeff');
-      grd.addColorStop(1,   '#ffffff');
-      ctx2d.fillStyle = grd;
-      ctx2d.fillRect(i * bw + 1, H - bh, bw - 2, bh);
-
-      // Peak hold — white horizontal tick
-      if (bh > peakHold[i]) {
-        peakHold[i] = bh;
-        peakTimer[i] = 40;
-      } else {
-        peakTimer[i]--;
-        if (peakTimer[i] < 0) peakHold[i] = Math.max(0, peakHold[i] - 1.2);
-      }
-      if (peakHold[i] > 2) {
-        ctx2d.fillStyle = '#ffffff';
-        ctx2d.fillRect(i * bw + 1, H - peakHold[i] - 1, bw - 2, 2);
-      }
-    }
-
-    // Waveform drawn across the TOP — bright cyan line with glow
-    const waveY = H * 0.22;   // vertical center of waveform strip
-    const waveAmp = H * 0.18;
-
-    // Glow layer
-    ctx2d.beginPath();
-    ctx2d.lineWidth   = 3;
-    ctx2d.strokeStyle = 'rgba(0,220,255,0.18)';
-    ctx2d.shadowColor = '#00eeff';
-    ctx2d.shadowBlur  = 14;
-    for (let i = 0; i < wave.length; i++) {
-      const x = (i / (wave.length - 1)) * W;
-      const y = waveY + ((wave[i] - 128) / 128) * waveAmp;
-      i === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
-    }
-    ctx2d.stroke();
-
-    // Sharp layer on top
-    ctx2d.beginPath();
-    ctx2d.lineWidth   = 1.2;
-    ctx2d.strokeStyle = '#00eeff';
-    ctx2d.shadowBlur  = 4;
-    for (let i = 0; i < wave.length; i++) {
-      const x = (i / (wave.length - 1)) * W;
-      const y = waveY + ((wave[i] - 128) / 128) * waveAmp;
-      i === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
-    }
-    ctx2d.stroke();
-    ctx2d.shadowBlur = 0;
-
-    // Dividing line between wave and bars
-    ctx2d.strokeStyle = 'rgba(0,200,255,0.12)';
-    ctx2d.lineWidth = 1;
-    ctx2d.beginPath();
-    ctx2d.moveTo(0, H * 0.36);
-    ctx2d.lineTo(W, H * 0.36);
-    ctx2d.stroke();
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // VIZ 1 — Alchemy  (WMP Alchemy plugin recreation)
-  // Glowing liquid blobs / plasma spheres that morph to the music
-  // ─────────────────────────────────────────────────────────────
-  const alcParticles = Array.from({length: 60}, () => ({
-    x: Math.random(), y: Math.random(),
-    vx: (Math.random()-.5)*0.004, vy: (Math.random()-.5)*0.004,
-    r: 0.02 + Math.random()*0.05,
-    hue: Math.random()*360,
-    phase: Math.random()*Math.PI*2,
-    life: Math.random()
-  }));
-
-  function drawAlchemy(W, H, freq, wave, accent, t) {
-    // Very slow fade → trails linger like the real Alchemy
-    ctx2d.fillStyle = 'rgba(0,0,0,0.08)';
-    ctx2d.fillRect(0, 0, W, H);
-
-    const avgVol  = freq.reduce((a,b)=>a+b,0) / freq.length / 255;
-    const bassVol = freq.slice(0,8).reduce((a,b)=>a+b,0) / 8 / 255;
-    const midVol  = freq.slice(8,32).reduce((a,b)=>a+b,0) / 24 / 255;
-
-    for (let p of alcParticles) {
-      // Drift + oscillate
-      p.phase += 0.018 + avgVol * 0.06;
-      p.x += p.vx + Math.sin(p.phase * 1.3) * 0.0015 * (1 + midVol * 3);
-      p.y += p.vy + Math.cos(p.phase * 0.9) * 0.0015 * (1 + midVol * 3);
-      // Wrap
-      if (p.x < -0.1) p.x = 1.1;
-      if (p.x > 1.1)  p.x = -0.1;
-      if (p.y < -0.1) p.y = 1.1;
-      if (p.y > 1.1)  p.y = -0.1;
-      // Hue shift slowly
-      p.hue = (p.hue + 0.3 + avgVol * 2) % 360;
-
-      const px = p.x * W;
-      const py = p.y * H;
-      const pr = (p.r + bassVol * 0.06) * Math.min(W,H);
-      const bright = 40 + midVol * 40;
-      const alpha  = 0.55 + avgVol * 0.35;
-
-      // Radial glow blob — the signature Alchemy look
-      const grd = ctx2d.createRadialGradient(px, py, 0, px, py, pr);
-      grd.addColorStop(0,   `hsla(${p.hue}, 100%, ${bright+30}%, ${alpha})`);
-      grd.addColorStop(0.4, `hsla(${p.hue}, 100%, ${bright}%, ${alpha * 0.7})`);
-      grd.addColorStop(1,   `hsla(${p.hue}, 100%, ${bright-10}%, 0)`);
-
-      ctx2d.beginPath();
-      ctx2d.arc(px, py, pr, 0, Math.PI*2);
-      ctx2d.fillStyle = grd;
-      ctx2d.fill();
-    }
-
-    // Beat-pulse: bright radial flash on big bass hits
-    if (bassVol > 0.55) {
-      const flash = ctx2d.createRadialGradient(W/2, H/2, 0, W/2, H/2, W * 0.5);
-      const fHue  = (t * 80) % 360;
-      flash.addColorStop(0,   `hsla(${fHue}, 100%, 80%, ${(bassVol-0.55)*0.5})`);
-      flash.addColorStop(1,   'transparent');
-      ctx2d.fillStyle = flash;
-      ctx2d.fillRect(0, 0, W, H);
-    }
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // VIZ 2 — Scope  (WMP classic oscilloscope)
-  // Bright waveform on dark gridded background, exactly like WMP
-  // ─────────────────────────────────────────────────────────────
-  function drawScope(W, H, wave, accent, t) {
-    ctx2d.fillStyle = '#050508';
-    ctx2d.fillRect(0, 0, W, H);
-
-    // Fine dot-grid background (authentic WMP scope look)
-    ctx2d.fillStyle = 'rgba(0,80,100,0.35)';
-    const gx = W / 16, gy = H / 10;
-    for (let x = gx; x < W; x += gx) {
-      for (let y = gy; y < H; y += gy) {
-        ctx2d.fillRect(x - 0.5, y - 0.5, 1, 1);
-      }
-    }
-
-    // Horizontal center rule
-    ctx2d.strokeStyle = 'rgba(0,150,180,0.2)';
-    ctx2d.lineWidth = 1;
-    ctx2d.setLineDash([3, 5]);
-    ctx2d.beginPath(); ctx2d.moveTo(0, H/2); ctx2d.lineTo(W, H/2); ctx2d.stroke();
-    ctx2d.setLineDash([]);
-
-    // Outer glow pass
-    ctx2d.beginPath();
-    ctx2d.lineWidth   = 6;
-    ctx2d.strokeStyle = 'rgba(0,255,180,0.08)';
-    ctx2d.shadowColor = '#00ffb8';
-    ctx2d.shadowBlur  = 20;
-    for (let i = 0; i < wave.length; i++) {
-      const x = (i / (wave.length - 1)) * W;
-      const y = H/2 + ((wave[i] - 128) / 128) * (H * 0.44);
-      i === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
-    }
-    ctx2d.stroke();
-
-    // Mid glow
-    ctx2d.beginPath();
-    ctx2d.lineWidth   = 2.5;
-    ctx2d.strokeStyle = 'rgba(0,255,180,0.5)';
-    ctx2d.shadowBlur  = 8;
-    for (let i = 0; i < wave.length; i++) {
-      const x = (i / (wave.length - 1)) * W;
-      const y = H/2 + ((wave[i] - 128) / 128) * (H * 0.44);
-      i === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
-    }
-    ctx2d.stroke();
-
-    // Sharp bright core line
-    ctx2d.beginPath();
-    ctx2d.lineWidth   = 1;
-    ctx2d.strokeStyle = '#aaffee';
-    ctx2d.shadowBlur  = 3;
-    for (let i = 0; i < wave.length; i++) {
-      const x = (i / (wave.length - 1)) * W;
-      const y = H/2 + ((wave[i] - 128) / 128) * (H * 0.44);
-      i === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
-    }
-    ctx2d.stroke();
-    ctx2d.shadowBlur = 0;
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // VIZ 3 — Battery  (WMP Battery visualization)
-  // Vertical illuminated meter columns, like analog VU meters
-  // ─────────────────────────────────────────────────────────────
-  const battPeak  = [];   // per-column peak
-  const battTimer = [];
-
-  function drawBattery(W, H, freq, t) {
-    ctx2d.fillStyle = '#020204';
-    ctx2d.fillRect(0, 0, W, H);
-
-    const cols   = 20;
-    const segs   = 18;           // segments per column
-    const cw     = W / cols;
-    const pad    = 3;
-    const segH   = (H - pad * (segs + 1)) / segs;
-    const step   = Math.floor(freq.length / cols);
-
-    while (battPeak.length  < cols) { battPeak.push(0); battTimer.push(0); }
-
-    for (let c = 0; c < cols; c++) {
-      const raw   = freq[c * step] / 255;
-      const level = Math.round(raw * segs);
-
-      // Peak hold
-      if (level > battPeak[c]) { battPeak[c] = level; battTimer[c] = 30; }
-      else { battTimer[c]--; if (battTimer[c] < 0) battPeak[c] = Math.max(0, battPeak[c] - 1); }
-
-      const x = c * cw + pad;
-      const bw2 = cw - pad * 2;
-
-      for (let s = 0; s < segs; s++) {
-        const sy   = H - pad - (s + 1) * (segH + pad);
-        const frac = s / segs;
-
-        // Color: green (bottom) → yellow (mid) → red (top) — authentic WMP Battery look
-        let r, g, b;
-        if (frac < 0.6)       { r=0;   g=210; b=80; }
-        else if (frac < 0.8)  { r=220; g=200; b=0; }
-        else                  { r=255; g=40;  b=20; }
-
-        const lit = s < level;
-        if (lit) {
-          // Lit segment with glow
-          ctx2d.shadowColor = `rgb(${r},${g},${b})`;
-          ctx2d.shadowBlur  = 6;
-          ctx2d.fillStyle   = `rgb(${r},${g},${b})`;
-          ctx2d.fillRect(x, sy, bw2, segH);
-
-          // Bright top highlight on each segment
-          ctx2d.fillStyle = `rgba(255,255,255,0.25)`;
-          ctx2d.fillRect(x, sy, bw2, 2);
-        } else {
-          // Dark unlit segment
-          ctx2d.shadowBlur = 0;
-          ctx2d.fillStyle  = `rgba(${r},${g},${b},0.08)`;
-          ctx2d.fillRect(x, sy, bw2, segH);
-        }
-      }
-      ctx2d.shadowBlur = 0;
-
-      // Peak segment — bright white tick
-      if (battPeak[c] > 0 && battPeak[c] <= segs) {
-        const ps = battPeak[c] - 1;
-        const py = H - pad - (ps + 1) * (segH + pad);
-        ctx2d.fillStyle = '#ffffff';
-        ctx2d.fillRect(x, py, bw2, 2);
-      }
-    }
-
-    // Column separators
-    ctx2d.strokeStyle = 'rgba(255,255,255,0.04)';
-    ctx2d.lineWidth = 1;
-    for (let c = 1; c < cols; c++) {
-      ctx2d.beginPath();
-      ctx2d.moveTo(c * cw, 0);
-      ctx2d.lineTo(c * cw, H);
-      ctx2d.stroke();
-    }
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // VIZ 4 — Spikes  (WMP circular spike / porcupine viz)
-  // Symmetric spikes radiating outward, rotating slowly
-  // ─────────────────────────────────────────────────────────────
-  function drawSpikes(W, H, freq, wave, t) {
-    // Slow fade for motion blur trail
-    ctx2d.fillStyle = 'rgba(0,0,0,0.15)';
-    ctx2d.fillRect(0, 0, W, H);
-
-    const cx   = W / 2, cy = H / 2;
-    const spokes = 128;
-    const step   = Math.floor(freq.length / spokes);
-    const baseR  = Math.min(W, H) * 0.10;
-    const maxR   = Math.min(W, H) * 0.46;
-    const rotSpd = t * 0.18;                        // slow rotation
-
-    // Two rings of spikes (inner smooth, outer sharp) — like WMP Spikes preset
-    for (let pass = 0; pass < 2; pass++) {
-      for (let i = 0; i < spokes; i++) {
-        const v   = freq[Math.min(i * step, freq.length - 1)] / 255;
-        const ang = (i / spokes) * Math.PI * 2 + rotSpd * (pass === 0 ? 1 : -0.7);
-        const r2  = baseR + v * (maxR - baseR) * (pass === 0 ? 1 : 0.6);
-        const r1  = baseR * (pass === 0 ? 1 : 0.5);
-
-        const hue  = (i / spokes * 360 + t * 50 + pass * 120) % 360;
-        const sat  = 100;
-        const lite = 45 + v * 30;
-
-        ctx2d.beginPath();
-        ctx2d.moveTo(cx + Math.cos(ang) * r1, cy + Math.sin(ang) * r1);
-        ctx2d.lineTo(cx + Math.cos(ang) * r2, cy + Math.sin(ang) * r2);
-        ctx2d.strokeStyle = `hsla(${hue},${sat}%,${lite}%,${0.6 + v * 0.4})`;
-        ctx2d.lineWidth   = pass === 0 ? 1.5 : 0.8;
-        ctx2d.shadowColor = `hsl(${hue},100%,65%)`;
-        ctx2d.shadowBlur  = pass === 0 ? 5 + v * 8 : 3;
-        ctx2d.stroke();
-      }
-    }
-    ctx2d.shadowBlur = 0;
-
-    // Center orb — pulses with average volume
-    const avgVol = freq.reduce((a,b)=>a+b,0) / freq.length / 255;
-    const orbR   = baseR * (0.6 + avgVol * 0.8);
-    const orbHue = (t * 70) % 360;
-    const orb    = ctx2d.createRadialGradient(cx, cy, 0, cx, cy, orbR);
-    orb.addColorStop(0,   `hsla(${orbHue}, 100%, 90%, 0.95)`);
-    orb.addColorStop(0.5, `hsla(${orbHue}, 100%, 60%, 0.6)`);
-    orb.addColorStop(1,   `hsla(${orbHue}, 100%, 30%, 0)`);
-    ctx2d.beginPath();
-    ctx2d.arc(cx, cy, orbR, 0, Math.PI*2);
-    ctx2d.fillStyle = orb;
-    ctx2d.fill();
   }
 
 })();

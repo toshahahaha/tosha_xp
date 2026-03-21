@@ -2409,27 +2409,33 @@ button, input, textarea, select, label {
   display: block;
 }
 
-/* Viz name label (bottom-left) */
-.wmp-viz-label {
+/* Prev/next viz buttons + label bar — sits at bottom of canvas */
+.wmp-viz-switcher {
   position: absolute;
-  bottom: 36px;
-  left: 10px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(0,0,0,0.55);
+  padding: 3px 8px;
+  backdrop-filter: blur(2px);
+}
+
+.wmp-viz-label {
   font-size: 9px;
-  color: rgba(100,180,255,0.5);
+  color: rgba(130,200,255,0.85);
   font-family: 'Courier New', monospace;
   letter-spacing: 1px;
   text-transform: uppercase;
-  pointer-events: none;
-  transition: opacity 0.5s;
-}
-
-/* Prev/next viz buttons */
-.wmp-viz-switcher {
-  position: absolute;
-  bottom: 30px;
-  right: 8px;
-  display: flex;
-  gap: 4px;
+  flex: 1;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
 }
 
 .wmp-viz-btn {
@@ -2446,6 +2452,7 @@ button, input, textarea, select, label {
   align-items: center;
   justify-content: center;
   transition: background 0.1s;
+  flex-shrink: 0;
 }
 .wmp-viz-btn:hover {
   background: rgba(49,106,197,0.7);
