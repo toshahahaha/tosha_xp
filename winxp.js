@@ -2392,8 +2392,528 @@ function ipodRewind() {
       gameInited=true;
       setTimeout(initGame,80);
     }
+    if(id==='media-player') wmpInit();
     return r;
   };
+})();
+
+// ===================== WINDOWS MEDIA PLAYER =====================
+(function(){
+
+  // ── Song library (shared with iPod) ──────────────────────────
+  const WMP_SONGS = [
+    {
+      title:  'iPod Touch',
+      artist: 'Ninajirachi',
+      album:  'I Love My Computer',
+      src:    'iPod Touch.mp3',
+      color:  '#7b2fff'   // accent colour used in visualizer
+    },
+    {
+      title:  'That Green Gentleman',
+      artist: 'Panic! at the Disco',
+      album:  'Pretty. Odd.',
+      src:    'That Green Gentleman.mp3',
+      color:  '#2fff7b'
+    }
+  ];
+
+  // ── State ────────────────────────────────────────────────────
+  let wmpReady   = false;
+  let wmpIdx     = 0;
+  let wmpPlaying = false;
+  let wmpShuffle = false;
+  let wmpRepeat  = false;
+  let wmpViz     = 0;          // current visualisation index
+  let wmpAudioCtx, wmpAnalyser, wmpSource;
+  let wmpRaf = 0;
+  let wmpInited  = false;
+
+  // Visualisation names (shown in label)
+  const VIZ_NAMES = [
+    'Bars & Waves',
+    'Radial Burst',
+    'Oscilloscope',
+    'Starfield',
+    'Fire',
+  ];
+
+  // ── DOM refs (populated in wmpInit) ─────────────────────────
+  let audio, canvas, ctx2d, playBtn, statusBar, seekFill, seekThumb,
+      elapsedEl, totalEl, overlayTitle, overlayArtist, vizLabel;
+
+  // ─────────────────────────────────────────────────────────────
+  // Public API (called from HTML onclick="wmpXxx()")
+  // ─────────────────────────────────────────────────────────────
+  window.wmpPlayPause  = () => { wmpEnsureCtx(); wmpPlaying ? pause() : play(); };
+  window.wmpStop       = () => { pause(); audio.currentTime = 0; wmpUpdateSeek(); };
+  window.wmpPrev       = () => { wmpLoadTrack((wmpIdx - 1 + WMP_SONGS.length) % WMP_SONGS.length, true); };
+  window.wmpNext       = () => { wmpLoadTrack(wmpShuffle ? wmpRandNext() : (wmpIdx+1) % WMP_SONGS.length, true); };
+  window.wmpToggleShuffle = () => {
+    wmpShuffle = !wmpShuffle;
+    document.getElementById('wmp-shuffle-btn').classList.toggle('active', wmpShuffle);
+  };
+  window.wmpToggleRepeat = () => {
+    wmpRepeat = !wmpRepeat;
+    document.getElementById('wmp-repeat-btn').classList.toggle('active', wmpRepeat);
+  };
+  window.wmpSetVolume  = v => { if (audio) audio.volume = v / 100; };
+  window.wmpSeek       = e => {
+    const bar = document.getElementById('wmp-seekbar');
+    const pct = Math.max(0, Math.min(1, e.offsetX / bar.clientWidth));
+    if (audio && audio.duration) audio.currentTime = pct * audio.duration;
+  };
+  window.wmpCycleViz = dir => {
+    wmpViz = (wmpViz + dir + VIZ_NAMES.length) % VIZ_NAMES.length;
+    if (vizLabel) vizLabel.textContent = VIZ_NAMES[wmpViz];
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // Init — called once when window first opens
+  // ─────────────────────────────────────────────────────────────
+  window.wmpInit = function() {
+    if (wmpInited) return;
+    wmpInited = true;
+
+    audio        = document.getElementById('wmp-audio');
+    canvas       = document.getElementById('wmp-canvas');
+    ctx2d        = canvas.getContext('2d');
+    playBtn      = document.getElementById('wmp-play-btn');
+    statusBar    = document.getElementById('wmp-statusbar');
+    seekFill     = document.getElementById('wmp-seek-fill');
+    seekThumb    = document.getElementById('wmp-seek-thumb');
+    elapsedEl    = document.getElementById('wmp-elapsed');
+    totalEl      = document.getElementById('wmp-total');
+    overlayTitle  = document.getElementById('wmp-overlay-title');
+    overlayArtist = document.getElementById('wmp-overlay-artist');
+    vizLabel     = document.getElementById('wmp-viz-label');
+
+    audio.volume = 0.8;
+
+    // timeupdate → seek bar
+    audio.addEventListener('timeupdate', wmpUpdateSeek);
+    // ended → auto-advance
+    audio.addEventListener('ended', () => {
+      if (wmpRepeat) { audio.currentTime = 0; play(); }
+      else window.wmpNext();
+    });
+
+    // Build playlist sidebar
+    wmpBuildPlaylist();
+
+    // Load first track (no autoplay — user must press play)
+    wmpLoadTrack(0, false);
+
+    // Start idle visualizer loop
+    wmpStartVizLoop();
+
+    // Resize canvas when window resizes
+    const resizeObs = new ResizeObserver(wmpResizeCanvas);
+    resizeObs.observe(canvas.parentElement);
+    wmpResizeCanvas();
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // Load a track
+  // ─────────────────────────────────────────────────────────────
+  function wmpLoadTrack(idx, autoplay) {
+    wmpIdx = idx;
+    const song = WMP_SONGS[idx];
+    audio.src = song.src;
+    audio.load();
+
+    // Update overlay
+    if (overlayTitle)  overlayTitle.textContent  = song.title;
+    if (overlayArtist) overlayArtist.textContent = song.artist;
+    if (statusBar)     statusBar.textContent     = `${song.title} — ${song.artist}`;
+
+    // Update playlist highlight
+    document.querySelectorAll('.wmp-pl-item').forEach((el, i) => {
+      el.classList.toggle('active', i === idx);
+      const sym = el.querySelector('.wmp-pl-playing');
+      if (sym) sym.style.display = i === idx ? 'inline' : 'none';
+    });
+
+    audio.addEventListener('loadedmetadata', () => {
+      totalEl.textContent = fmtTime(audio.duration);
+      wmpUpdateSeek();
+    }, { once: true });
+
+    if (autoplay) play();
+    else { wmpPlaying = false; playBtn.textContent = '▶'; }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Play / Pause helpers
+  // ─────────────────────────────────────────────────────────────
+  function play() {
+    wmpEnsureCtx();
+    audio.play().then(() => {
+      wmpPlaying = true;
+      playBtn.textContent = '⏸';
+      statusBar.textContent = `▶ Playing — ${WMP_SONGS[wmpIdx].title}`;
+    }).catch(() => {});
+  }
+
+  function pause() {
+    audio.pause();
+    wmpPlaying = false;
+    playBtn.textContent = '▶';
+    statusBar.textContent = `⏸ Paused — ${WMP_SONGS[wmpIdx].title}`;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Web Audio API setup
+  // ─────────────────────────────────────────────────────────────
+  function wmpEnsureCtx() {
+    if (wmpAudioCtx) return;
+    wmpAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    wmpAnalyser = wmpAudioCtx.createAnalyser();
+    wmpAnalyser.fftSize = 512;
+    wmpAnalyser.smoothingTimeConstant = 0.82;
+    wmpSource = wmpAudioCtx.createMediaElementSource(audio);
+    wmpSource.connect(wmpAnalyser);
+    wmpAnalyser.connect(wmpAudioCtx.destination);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Seek bar update
+  // ─────────────────────────────────────────────────────────────
+  function wmpUpdateSeek() {
+    if (!audio || !audio.duration) return;
+    const pct = audio.currentTime / audio.duration;
+    if (seekFill)  seekFill.style.width  = (pct * 100) + '%';
+    if (seekThumb) seekThumb.style.left  = (pct * 100) + '%';
+    if (elapsedEl) elapsedEl.textContent = fmtTime(audio.currentTime);
+    if (totalEl && audio.duration) totalEl.textContent = fmtTime(audio.duration);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Build playlist sidebar
+  // ─────────────────────────────────────────────────────────────
+  function wmpBuildPlaylist() {
+    const list = document.getElementById('wmp-playlist');
+    if (!list) return;
+    list.innerHTML = '';
+    WMP_SONGS.forEach((s, i) => {
+      const el = document.createElement('div');
+      el.className = 'wmp-pl-item' + (i === 0 ? ' active' : '');
+      el.onclick = () => wmpLoadTrack(i, true);
+      el.innerHTML = `
+        <div class="wmp-pl-num">${i+1}</div>
+        <div class="wmp-pl-info">
+          <div class="wmp-pl-title">${s.title}</div>
+          <div class="wmp-pl-artist">${s.artist}</div>
+        </div>
+        <span class="wmp-pl-playing" style="display:${i===0?'inline':'none'}">♪</span>`;
+      list.appendChild(el);
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Canvas resize
+  // ─────────────────────────────────────────────────────────────
+  function wmpResizeCanvas() {
+    if (!canvas) return;
+    canvas.width  = canvas.offsetWidth  || 400;
+    canvas.height = canvas.offsetHeight || 260;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Shuffle helper
+  // ─────────────────────────────────────────────────────────────
+  function wmpRandNext() {
+    let n;
+    do { n = Math.floor(Math.random() * WMP_SONGS.length); } while (n === wmpIdx && WMP_SONGS.length > 1);
+    return n;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // TIME FORMAT
+  // ─────────────────────────────────────────────────────────────
+  function fmtTime(s) {
+    if (!s || isNaN(s)) return '0:00';
+    const m = Math.floor(s / 60);
+    const sec = String(Math.floor(s % 60)).padStart(2, '0');
+    return `${m}:${sec}`;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // VISUALIZER LOOP
+  // ─────────────────────────────────────────────────────────────
+  function wmpStartVizLoop() {
+    let t = 0;
+    // Starfield state
+    const stars = Array.from({length:120}, () => ({
+      x: Math.random(), y: Math.random(),
+      vx: (Math.random()-.5)*.002, vy: (Math.random()-.5)*.002,
+      size: Math.random()*2+.5, bright: Math.random()
+    }));
+    // Fire state
+    const FIRE_COLS = 80, FIRE_ROWS = 50;
+    const fire = new Uint8Array(FIRE_COLS * FIRE_ROWS);
+
+    const loop = () => {
+      wmpRaf = requestAnimationFrame(loop);
+      t += 0.016;
+
+      if (!canvas || !ctx2d) return;
+      const W = canvas.width, H = canvas.height;
+      if (W < 4 || H < 4) return;
+
+      // Get frequency data (real if analyser exists, else fake idle data)
+      const bins = wmpAnalyser ? wmpAnalyser.frequencyBinCount : 128;
+      const freq = new Uint8Array(bins);
+      const wave = new Uint8Array(bins);
+      if (wmpAnalyser) {
+        wmpAnalyser.getByteFrequencyData(freq);
+        wmpAnalyser.getByteTimeDomainData(wave);
+      } else {
+        // idle: gentle sine shimmer
+        for (let i = 0; i < bins; i++) {
+          freq[i] = Math.max(0, 30 + 20*Math.sin(t*1.2 + i*0.15) + 10*Math.sin(t*2.3 + i*0.08));
+          wave[i] = 128 + 15*Math.sin(t*2 + i*0.1);
+        }
+      }
+
+      const accent = WMP_SONGS[wmpIdx]?.color || '#5aafff';
+
+      switch (wmpViz) {
+        case 0: drawBarsWaves(W, H, freq, wave, accent, t); break;
+        case 1: drawRadial(W, H, freq, accent, t);          break;
+        case 2: drawOscilloscope(W, H, wave, accent, t);    break;
+        case 3: drawStarfield(W, H, freq, accent, t, stars);break;
+        case 4: drawFire(W, H, freq, accent, t, fire);      break;
+      }
+    };
+    loop();
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // VIZ 0 — Bars & Waves  (classic WMP style)
+  // ─────────────────────────────────────────────────────────────
+  function drawBarsWaves(W, H, freq, wave, accent, t) {
+    // Background: deep space gradient
+    const bg = ctx2d.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0, '#000010');
+    bg.addColorStop(1, '#000820');
+    ctx2d.fillStyle = bg;
+    ctx2d.fillRect(0,0,W,H);
+
+    // Bars (bottom half)
+    const halfH = H * 0.55;
+    const barCount = 48;
+    const bw = W / barCount;
+    const step = Math.floor(freq.length / barCount);
+
+    for (let i = 0; i < barCount; i++) {
+      const v = freq[i * step] / 255;
+      const bh = v * halfH;
+      const hue = 200 + v * 160;          // blue → purple → pink
+      const grd = ctx2d.createLinearGradient(0, H, 0, H - bh);
+      grd.addColorStop(0, `hsla(${hue},100%,40%,0.9)`);
+      grd.addColorStop(0.6,`hsla(${hue+30},100%,60%,0.8)`);
+      grd.addColorStop(1,  `hsla(${hue+60},100%,90%,0.5)`);
+      ctx2d.fillStyle = grd;
+      ctx2d.fillRect(i*bw + 1, H - bh, bw - 2, bh);
+
+      // peak dot
+      ctx2d.fillStyle = `hsla(${hue+60},100%,90%,0.9)`;
+      ctx2d.fillRect(i*bw + 1, H - bh - 2, bw - 2, 2);
+    }
+
+    // Waveform line (top half)
+    ctx2d.beginPath();
+    ctx2d.strokeStyle = accent;
+    ctx2d.lineWidth = 1.5;
+    ctx2d.shadowColor = accent;
+    ctx2d.shadowBlur = 8;
+    for (let i = 0; i < wave.length; i++) {
+      const x = (i / wave.length) * W;
+      const y = (wave[i] / 255) * (H * 0.38) + 4;
+      i === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
+    }
+    ctx2d.stroke();
+    ctx2d.shadowBlur = 0;
+
+    // Reflection (mirrored bars, faded)
+    ctx2d.save();
+    ctx2d.globalAlpha = 0.12;
+    ctx2d.scale(1, -1);
+    ctx2d.translate(0, -H);
+    for (let i = 0; i < barCount; i++) {
+      const v = freq[i * step] / 255;
+      const bh = v * halfH * 0.4;
+      ctx2d.fillStyle = accent;
+      ctx2d.fillRect(i*bw + 1, H - bh, bw - 2, bh);
+    }
+    ctx2d.restore();
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // VIZ 1 — Radial Burst
+  // ─────────────────────────────────────────────────────────────
+  function drawRadial(W, H, freq, accent, t) {
+    // Fade trail
+    ctx2d.fillStyle = 'rgba(0,0,8,0.18)';
+    ctx2d.fillRect(0,0,W,H);
+
+    const cx = W/2, cy = H/2;
+    const bars = 64;
+    const step = Math.floor(freq.length / bars);
+    const baseR = Math.min(W,H) * 0.12;
+    const maxR  = Math.min(W,H) * 0.44;
+
+    for (let i = 0; i < bars; i++) {
+      const v   = freq[i * step] / 255;
+      const ang = (i / bars) * Math.PI * 2 - Math.PI/2 + t*0.2;
+      const r1  = baseR + 2;
+      const r2  = baseR + v * (maxR - baseR);
+      const hue = (i / bars) * 360 + t * 40;
+
+      ctx2d.beginPath();
+      ctx2d.moveTo(cx + Math.cos(ang)*r1, cy + Math.sin(ang)*r1);
+      ctx2d.lineTo(cx + Math.cos(ang)*r2, cy + Math.sin(ang)*r2);
+      ctx2d.strokeStyle = `hsla(${hue},100%,65%,${0.5 + v*0.5})`;
+      ctx2d.lineWidth = 2.5;
+      ctx2d.shadowColor = `hsl(${hue},100%,70%)`;
+      ctx2d.shadowBlur = 6 + v*10;
+      ctx2d.stroke();
+    }
+    ctx2d.shadowBlur = 0;
+
+    // Center circle
+    const avgVol = freq.reduce((a,b)=>a+b,0)/freq.length/255;
+    const grd = ctx2d.createRadialGradient(cx,cy,0, cx,cy, baseR*(1+avgVol*0.5));
+    grd.addColorStop(0, `hsla(${(t*60)%360},100%,80%,0.9)`);
+    grd.addColorStop(1, 'transparent');
+    ctx2d.beginPath();
+    ctx2d.arc(cx, cy, baseR*(1+avgVol*0.5), 0, Math.PI*2);
+    ctx2d.fillStyle = grd;
+    ctx2d.fill();
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // VIZ 2 — Oscilloscope
+  // ─────────────────────────────────────────────────────────────
+  function drawOscilloscope(W, H, wave, accent, t) {
+    ctx2d.fillStyle = '#000010';
+    ctx2d.fillRect(0,0,W,H);
+
+    // Grid lines
+    ctx2d.strokeStyle = 'rgba(40,80,120,0.3)';
+    ctx2d.lineWidth = 1;
+    for (let y = 0; y <= H; y += H/8) {
+      ctx2d.beginPath(); ctx2d.moveTo(0,y); ctx2d.lineTo(W,y); ctx2d.stroke();
+    }
+    for (let x = 0; x <= W; x += W/12) {
+      ctx2d.beginPath(); ctx2d.moveTo(x,0); ctx2d.lineTo(x,H); ctx2d.stroke();
+    }
+
+    // Two-layer glow wave
+    for (let pass = 0; pass < 2; pass++) {
+      ctx2d.beginPath();
+      ctx2d.strokeStyle = pass === 0 ? `${accent}44` : accent;
+      ctx2d.lineWidth   = pass === 0 ? 5 : 1.8;
+      ctx2d.shadowColor = accent;
+      ctx2d.shadowBlur  = pass === 0 ? 18 : 6;
+      for (let i = 0; i < wave.length; i++) {
+        const x = (i / wave.length) * W;
+        const y = ((wave[i] - 128) / 128) * (H * 0.42) + H/2;
+        i === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
+      }
+      ctx2d.stroke();
+    }
+    ctx2d.shadowBlur = 0;
+
+    // Center guide line
+    ctx2d.strokeStyle = 'rgba(100,180,255,0.15)';
+    ctx2d.lineWidth = 1;
+    ctx2d.setLineDash([4,6]);
+    ctx2d.beginPath(); ctx2d.moveTo(0,H/2); ctx2d.lineTo(W,H/2); ctx2d.stroke();
+    ctx2d.setLineDash([]);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // VIZ 3 — Starfield
+  // ─────────────────────────────────────────────────────────────
+  function drawStarfield(W, H, freq, accent, t, stars) {
+    ctx2d.fillStyle = 'rgba(0,0,8,0.25)';
+    ctx2d.fillRect(0,0,W,H);
+
+    const avgVol = freq.reduce((a,b)=>a+b,0)/freq.length/255;
+    const speed  = 0.5 + avgVol * 4;
+
+    for (const s of stars) {
+      s.x += s.vx * speed;
+      s.y += s.vy * speed;
+      if (s.x < 0) s.x = 1; if (s.x > 1) s.x = 0;
+      if (s.y < 0) s.y = 1; if (s.y > 1) s.y = 0;
+
+      const brightness = 0.3 + 0.7*(Math.sin(t*2+s.bright*10)*.5+.5);
+      const hue = (t*20 + s.bright*360) % 360;
+      ctx2d.beginPath();
+      ctx2d.arc(s.x*W, s.y*H, s.size*(0.5+avgVol*2), 0, Math.PI*2);
+      ctx2d.fillStyle = `hsla(${hue},80%,80%,${brightness})`;
+      ctx2d.shadowColor = `hsl(${hue},100%,70%)`;
+      ctx2d.shadowBlur = s.size * 3 * (1+avgVol*3);
+      ctx2d.fill();
+    }
+    ctx2d.shadowBlur = 0;
+
+    // Beat flash
+    if (avgVol > 0.6) {
+      const flash = ctx2d.createRadialGradient(W/2,H/2,0, W/2,H/2,W*0.6);
+      flash.addColorStop(0, `${accent}33`);
+      flash.addColorStop(1, 'transparent');
+      ctx2d.fillStyle = flash;
+      ctx2d.fillRect(0,0,W,H);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // VIZ 4 — Fire
+  // ─────────────────────────────────────────────────────────────
+  function drawFire(W, H, freq, accent, t, fire) {
+    const COLS = 80, ROWS = 50;
+
+    // Seed bottom row from bass frequencies
+    const bassAvg = freq.slice(0, 12).reduce((a,b)=>a+b,0) / 12;
+    for (let x = 0; x < COLS; x++) {
+      fire[(ROWS-1)*COLS + x] = bassAvg > 20
+        ? Math.min(255, bassAvg + Math.random()*60)
+        : Math.random() < 0.3 ? Math.random()*80 : 0;
+    }
+
+    // Propagate upward
+    for (let y = 0; y < ROWS-1; y++) {
+      for (let x = 0; x < COLS; x++) {
+        const sum = fire[y*COLS+((x-1+COLS)%COLS)]
+                  + fire[(y+1)*COLS+x]
+                  + fire[y*COLS+((x+1)%COLS)]
+                  + fire[(y+2<ROWS?(y+2):ROWS-1)*COLS+x];
+        fire[y*COLS+x] = Math.max(0, (sum * 0.245) - (Math.random()<0.3?1:0));
+      }
+    }
+
+    // Draw
+    ctx2d.fillStyle = '#000';
+    ctx2d.fillRect(0,0,W,H);
+    const cw = W/COLS, ch = H/ROWS;
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        const v = fire[y*COLS+x];
+        if (v < 2) continue;
+        const t2 = v / 255;
+        const r = Math.min(255, t2*3*255);
+        const g = Math.max(0, Math.min(255, (t2-0.33)*3*255));
+        const b = Math.max(0, Math.min(255, (t2-0.66)*3*255));
+        ctx2d.fillStyle = `rgb(${r|0},${g|0},${b|0})`;
+        ctx2d.fillRect(x*cw, y*ch, cw+1, ch+1);
+      }
+    }
+  }
+
 })();
 
 
