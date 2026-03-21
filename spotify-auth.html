@@ -64,7 +64,7 @@
   // ── Start auth ─────────────────────────────────────────────────
   async function startAuth() {
     const { verifier, challenge } = await pkce();
-    localStorage.setItem('pkce_verifier', verifier);
+    // Pass verifier in `state` so it survives the redirect (no localStorage needed)
     const params = new URLSearchParams({
       client_id:             CLIENT_ID,
       response_type:         'code',
@@ -72,6 +72,7 @@
       scope:                 SCOPES,
       code_challenge_method: 'S256',
       code_challenge:        challenge,
+      state:                 verifier,   // piggyback verifier in state
     });
     window.location.href = 'https://accounts.spotify.com/authorize?' + params;
   }
@@ -89,8 +90,8 @@
     }
     if (!code) return; // not a callback, normal page load
 
-    const verifier = localStorage.getItem('pkce_verifier');
-    localStorage.removeItem('pkce_verifier'); // clean up
+    // Verifier comes back in the `state` param — no localStorage needed
+    const verifier = params.get('state');
     if (!verifier) {
       document.getElementById('error-msg').style.display = 'block';
       document.getElementById('error-msg').textContent   = 'Missing PKCE verifier — please try again.';
