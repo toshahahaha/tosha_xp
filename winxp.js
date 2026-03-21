@@ -2499,39 +2499,26 @@ function ipodRewind() {
     // Load first track (no autoplay until user clicks)
     wmpLoadTrack(0, false);
 
-    // Start idle canvas loop (draws black until Butterchurn kicks in)
-    wmpIdleLoop();
+    // Boot Butterchurn visualizer immediately (no audio needed yet)
+    wmpBootButterchurn();
   };
 
   // ─────────────────────────────────────────────────────────────
-  // Web Audio + Butterchurn setup (on first user gesture)
+  // Butterchurn boot — runs on init, retries until libs are ready
   // ─────────────────────────────────────────────────────────────
-  function wmpEnsureCtx() {
-    if (wmpAudioCtx) {
-      // Resume if suspended (autoplay policy)
-      if (wmpAudioCtx.state === 'suspended') wmpAudioCtx.resume();
+  function wmpBootButterchurn() {
+    if (typeof window.butterchurn === 'undefined' || typeof window.butterchurnPresets === 'undefined') {
+      setTimeout(wmpBootButterchurn, 300);
       return;
     }
 
-    wmpAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    wmpAnalyser = wmpAudioCtx.createAnalyser();
-    wmpAnalyser.fftSize = 2048;
-    wmpAnalyser.smoothingTimeConstant = 0.8;
-
-    // Connect audio element → analyser → output
-    wmpSource = wmpAudioCtx.createMediaElementSource(audio);
-    wmpSource.connect(wmpAnalyser);
-    wmpAnalyser.connect(wmpAudioCtx.destination);
-
-    // Boot Butterchurn
-    wmpBootButterchurn();
-  }
-
-  function wmpBootButterchurn() {
-    if (typeof window.butterchurn === 'undefined' || typeof window.butterchurnPresets === 'undefined') {
-      // Butterchurn not loaded yet — fallback idle canvas, retry in 500ms
-      setTimeout(wmpBootButterchurn, 500);
-      return;
+    // Create AudioContext now (needed by Butterchurn constructor)
+    // Audio element is NOT connected yet — that happens on first user gesture
+    if (!wmpAudioCtx) {
+      wmpAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      wmpAnalyser = wmpAudioCtx.createAnalyser();
+      wmpAnalyser.fftSize = 2048;
+      wmpAnalyser.smoothingTimeConstant = 0.8;
     }
 
     // Resize canvas now so Butterchurn gets correct dimensions
@@ -2568,9 +2555,26 @@ function ipodRewind() {
 
     wmpApplyPreset(wmpPresetKeys[wmpPresetIdx]);
 
-    // Cancel idle loop and start Butterchurn render loop
+    // Start Butterchurn render loop
     cancelAnimationFrame(wmpVizRaf);
     wmpRenderLoop();
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Web Audio connect — called on first user gesture (play button)
+  // Connects the audio element to the analyser so visuals react to music
+  // ─────────────────────────────────────────────────────────────
+  function wmpEnsureCtx() {
+    // Resume if suspended (autoplay policy)
+    if (wmpAudioCtx && wmpAudioCtx.state === 'suspended') {
+      wmpAudioCtx.resume();
+    }
+    // Connect audio element → analyser → output (only once)
+    if (!wmpSource && wmpAudioCtx && audio) {
+      wmpSource = wmpAudioCtx.createMediaElementSource(audio);
+      wmpSource.connect(wmpAnalyser);
+      wmpAnalyser.connect(wmpAudioCtx.destination);
+    }
   }
 
   function wmpApplyPreset(presetName) {
@@ -2613,26 +2617,8 @@ function ipodRewind() {
     loop();
   }
 
-  // Idle loop — draws a dark canvas while Butterchurn isn't ready yet
-  function wmpIdleLoop() {
-    const ctx = canvas.getContext('2d');
-    const loop = () => {
-      // Stop idling once Butterchurn takes over
-      if (wmpVisualizer) return;
-      wmpVizRaf = requestAnimationFrame(loop);
-      if (!canvas.width || !canvas.height) return;
-      ctx.fillStyle = '#000008';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      // Subtle pulsing dot
-      const t = performance.now() / 1000;
-      const alpha = 0.3 + 0.2 * Math.sin(t * 2);
-      ctx.fillStyle = `rgba(80,160,255,${alpha})`;
-      ctx.beginPath();
-      ctx.arc(canvas.width/2, canvas.height/2, 4 + 2*Math.sin(t*3), 0, Math.PI*2);
-      ctx.fill();
-    };
-    loop();
-  }
+  // (Idle loop removed — calling getContext('2d') on the canvas would prevent
+  //  Butterchurn from acquiring a WebGL context. Canvas stays black via CSS.)
 
   // ─────────────────────────────────────────────────────────────
   // Handle canvas resize — also notify Butterchurn
