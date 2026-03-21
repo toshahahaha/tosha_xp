@@ -32,6 +32,16 @@ exports.handler = async (event) => {
 
   const { grant_type } = body;
 
+  // ── 0. Return the current refresh token status (for debugging) ──
+  if (grant_type === 'check_token') {
+    const rt = process.env.SPOTIFY_REFRESH_TOKEN;
+    return {
+      statusCode: 200,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ has_token: !!rt, prefix: rt ? rt.substring(0, 8) : null }),
+    };
+  }
+
   // ── 1. authorization_code: one-time PKCE exchange (spotify-auth.html) ──
   if (grant_type === 'authorization_code') {
     const { code, verifier, redirect_uri } = body;
