@@ -2431,7 +2431,7 @@ function ipodRewind() {
 
   // DOM refs
   let audio, canvas, playBtn, statusBar, seekFill, seekThumb,
-      elapsedEl, totalEl, overlayTitle, overlayArtist, vizLabel;
+      elapsedEl, totalEl, infobarText, vizLabel;
 
   // ─────────────────────────────────────────────────────────────
   // Public API
@@ -2478,8 +2478,7 @@ function ipodRewind() {
     seekThumb     = document.getElementById('wmp-seek-thumb');
     elapsedEl     = document.getElementById('wmp-elapsed');
     totalEl       = document.getElementById('wmp-total');
-    overlayTitle  = document.getElementById('wmp-overlay-title');
-    overlayArtist = document.getElementById('wmp-overlay-artist');
+    infobarText   = document.getElementById('wmp-infobar-text');
     vizLabel      = document.getElementById('wmp-viz-label');
 
     audio.volume = 0.8;
@@ -2657,9 +2656,8 @@ function ipodRewind() {
     audio.src = song.src;
     audio.load();
 
-    if (overlayTitle)  overlayTitle.textContent  = song.title;
-    if (overlayArtist) overlayArtist.textContent = song.artist;
-    if (statusBar)     statusBar.textContent     = `${song.title} — ${song.artist}`;
+    if (infobarText) infobarText.textContent = `${song.title} — ${song.artist}`;
+    if (statusBar)   statusBar.textContent   = `${song.title} — ${song.artist}`;
 
     document.querySelectorAll('.wmp-pl-item').forEach((el, i) => {
       el.classList.toggle('active', i === idx);
@@ -2675,7 +2673,7 @@ function ipodRewind() {
     if (autoplay) play();
     else {
       wmpPlaying = false;
-      if (playBtn) playBtn.textContent = '▶';
+      wmpSetPlayIcon(false);
     }
   }
 
@@ -2686,8 +2684,9 @@ function ipodRewind() {
     wmpEnsureCtx();
     audio.play().then(() => {
       wmpPlaying = true;
-      if (playBtn) playBtn.textContent = '⏸';
-      if (statusBar) statusBar.textContent = `▶ Playing — ${WMP_SONGS[wmpIdx].title}`;
+      wmpSetPlayIcon(true);
+      if (infobarText) infobarText.textContent = `▶  ${WMP_SONGS[wmpIdx].title} — ${WMP_SONGS[wmpIdx].artist}`;
+      if (statusBar) statusBar.textContent = `Playing: ${WMP_SONGS[wmpIdx].title} — ${WMP_SONGS[wmpIdx].artist}`;
       wmpStartPresetCycle();
     }).catch(err => {
       console.warn('WMP play blocked:', err);
@@ -2698,9 +2697,22 @@ function ipodRewind() {
     if (!audio) return;
     audio.pause();
     wmpPlaying = false;
-    if (playBtn) playBtn.textContent = '▶';
-    if (statusBar) statusBar.textContent = `⏸ Paused — ${WMP_SONGS[wmpIdx].title}`;
+    wmpSetPlayIcon(false);
+    if (infobarText) infobarText.textContent = `${WMP_SONGS[wmpIdx].title} — ${WMP_SONGS[wmpIdx].artist}`;
+    if (statusBar) statusBar.textContent = `Paused: ${WMP_SONGS[wmpIdx].title}`;
     clearInterval(wmpPresetTimer);
+  }
+
+  function wmpSetPlayIcon(playing) {
+    const icon = document.getElementById('wmp-play-icon');
+    if (!icon) return;
+    if (playing) {
+      // Pause icon: two rectangles
+      icon.innerHTML = '<rect x="2" y="2" width="4" height="10" fill="currentColor"/><rect x="8" y="2" width="4" height="10" fill="currentColor"/>';
+    } else {
+      // Play icon: triangle
+      icon.innerHTML = '<polygon points="2,1 2,13 13,7" fill="currentColor"/>';
+    }
   }
 
   // ─────────────────────────────────────────────────────────────

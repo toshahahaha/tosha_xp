@@ -660,7 +660,7 @@
   </div>
 
   <!-- =================== MEDIA PLAYER =================== -->
-  <div class="xp-window" id="media-player" style="top:50px; left:160px; width:580px; height:480px;">
+  <div class="xp-window wmp-window" id="media-player" style="top:40px; left:140px; width:620px; height:500px;">
     <div class="win-resize win-resize-nw" onmousedown="startResize(event,'media-player','nw')"></div>
     <div class="win-resize win-resize-n"  onmousedown="startResize(event,'media-player','n')"></div>
     <div class="win-resize win-resize-ne" onmousedown="startResize(event,'media-player','ne')"></div>
@@ -670,10 +670,21 @@
     <div class="win-resize win-resize-s"  onmousedown="startResize(event,'media-player','s')"></div>
     <div class="win-resize win-resize-se" onmousedown="startResize(event,'media-player','se')"></div>
 
+    <!-- Title bar -->
     <div class="win-titlebar wmp-titlebar" onmousedown="startDrag(event,'media-player')">
       <span class="win-title-icon">
-        <!-- WMP orb icon -->
-        <svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="#1a6a1a"/><circle cx="8" cy="8" r="5" fill="#2aaa2a"/><polygon points="6,5 6,11 12,8" fill="white"/></svg>
+        <!-- WMP classic orb: blue sphere with play triangle -->
+        <svg width="16" height="16" viewBox="0 0 16 16">
+          <defs>
+            <radialGradient id="wmpOrb" cx="38%" cy="32%" r="60%">
+              <stop offset="0%" stop-color="#6ad0ff"/>
+              <stop offset="55%" stop-color="#1a7ecf"/>
+              <stop offset="100%" stop-color="#0a3a7a"/>
+            </radialGradient>
+          </defs>
+          <circle cx="8" cy="8" r="7.5" fill="url(#wmpOrb)"/>
+          <polygon points="6,4.5 6,11.5 12.5,8" fill="white" opacity="0.95"/>
+        </svg>
       </span>
       <span class="win-title-text">Windows Media Player</span>
       <div class="win-controls">
@@ -683,7 +694,7 @@
       </div>
     </div>
 
-    <!-- WMP Menu bar -->
+    <!-- Menu bar -->
     <div class="win-menubar wmp-menubar">
       <div class="win-menu-item">File</div>
       <div class="win-menu-item">View</div>
@@ -692,70 +703,148 @@
       <div class="win-menu-item">Help</div>
     </div>
 
-    <!-- Main WMP layout -->
+    <!-- ── Song info / marquee bar ── -->
+    <div class="wmp-infobar">
+      <div class="wmp-infobar-marquee">
+        <span id="wmp-infobar-text">Windows Media Player</span>
+      </div>
+      <div class="wmp-infobar-np">Now Playing ▾</div>
+    </div>
+
+    <!-- ── Main layout: left nav | center viz+playlist ── -->
     <div class="wmp-body">
 
-      <!-- LEFT: playlist sidebar -->
-      <div class="wmp-sidebar">
-        <div class="wmp-sidebar-title">Now Playing</div>
-        <div class="wmp-playlist" id="wmp-playlist">
-          <!-- populated by JS -->
+      <!-- LEFT: classic XP nav panel -->
+      <div class="wmp-nav">
+        <div class="wmp-nav-item wmp-nav-active">
+          <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="#7ab8ff" stroke-width="1.5"/><polygon points="5,3.5 5,10.5 11,7" fill="#7ab8ff"/></svg>
+          <span>Now Playing</span>
+        </div>
+        <div class="wmp-nav-item">
+          <svg width="14" height="14" viewBox="0 0 14 14"><rect x="1" y="2" width="12" height="10" rx="1" fill="none" stroke="#999" stroke-width="1.2"/><circle cx="7" cy="7" r="2.5" fill="#999"/></svg>
+          <span>Media Guide</span>
+        </div>
+        <div class="wmp-nav-item">
+          <svg width="14" height="14" viewBox="0 0 14 14"><rect x="2" y="3" width="10" height="8" rx="1" fill="none" stroke="#999" stroke-width="1.2"/><line x1="4" y1="6" x2="10" y2="6" stroke="#999" stroke-width="1"/><line x1="4" y1="8" x2="10" y2="8" stroke="#999" stroke-width="1"/></svg>
+          <span>Copy from CD</span>
+        </div>
+        <div class="wmp-nav-item">
+          <svg width="14" height="14" viewBox="0 0 14 14"><rect x="1" y="1" width="12" height="12" rx="1" fill="none" stroke="#999" stroke-width="1.2"/><line x1="3" y1="4" x2="11" y2="4" stroke="#999" stroke-width="1"/><line x1="3" y1="7" x2="11" y2="7" stroke="#999" stroke-width="1"/><line x1="3" y1="10" x2="11" y2="10" stroke="#999" stroke-width="1"/></svg>
+          <span>Media Library</span>
+        </div>
+        <div class="wmp-nav-item">
+          <svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 2 Q11 4 11 7 Q11 11 7 12 Q3 11 3 7 Q3 4 7 2Z" fill="none" stroke="#999" stroke-width="1.2"/><line x1="7" y1="4" x2="7" y2="7" stroke="#999" stroke-width="1.5"/></svg>
+          <span>Radio Tuner</span>
+        </div>
+        <div class="wmp-nav-item">
+          <svg width="14" height="14" viewBox="0 0 14 14"><rect x="1" y="4" width="9" height="7" rx="1" fill="none" stroke="#999" stroke-width="1.2"/><rect x="5" y="1" width="8" height="7" rx="1" fill="none" stroke="#999" stroke-width="1.2"/></svg>
+          <span>Copy to CD<br>or Device</span>
+        </div>
+        <div class="wmp-nav-item">
+          <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" fill="none" stroke="#999" stroke-width="1.2"/><text x="7" y="10.5" text-anchor="middle" fill="#999" font-size="7" font-weight="bold">$</text></svg>
+          <span>Premium<br>Services</span>
+        </div>
+        <div class="wmp-nav-item">
+          <svg width="14" height="14" viewBox="0 0 14 14"><rect x="1" y="1" width="12" height="12" rx="2" fill="none" stroke="#999" stroke-width="1.2"/><rect x="3" y="3" width="4" height="4" fill="#999"/><rect x="7" y="7" width="4" height="4" fill="#999"/></svg>
+          <span>Skin Chooser</span>
         </div>
       </div>
 
-      <!-- RIGHT: visualizer + controls -->
+      <!-- CENTER+RIGHT: viz area + now-playing panel -->
       <div class="wmp-main">
 
         <!-- Visualization canvas -->
         <div class="wmp-viz-wrap">
           <canvas id="wmp-canvas" class="wmp-canvas"></canvas>
-          <!-- Viz preset controls -->
+
+          <!-- Viz preset switcher overlay -->
           <div class="wmp-viz-switcher">
             <button class="wmp-viz-btn" onclick="wmpCycleViz(-1)" title="Prev preset">◀</button>
             <div class="wmp-viz-label" id="wmp-viz-label">MilkDrop</div>
             <button class="wmp-viz-btn" onclick="wmpCycleViz(1)"  title="Next preset">▶</button>
           </div>
-          <!-- Song info overlay -->
-          <div class="wmp-now-playing-overlay" id="wmp-overlay">
-            <div class="wmp-overlay-title" id="wmp-overlay-title">—</div>
-            <div class="wmp-overlay-artist" id="wmp-overlay-artist">—</div>
-          </div>
         </div>
 
-        <!-- Progress bar -->
-        <div class="wmp-progress-wrap">
-          <span class="wmp-time" id="wmp-elapsed">0:00</span>
-          <div class="wmp-seekbar" id="wmp-seekbar" onclick="wmpSeek(event)">
-            <div class="wmp-seek-fill" id="wmp-seek-fill"></div>
-            <div class="wmp-seek-thumb" id="wmp-seek-thumb"></div>
+        <!-- NOW PLAYING right panel -->
+        <div class="wmp-np-panel">
+          <div class="wmp-np-header">Now Playing</div>
+          <!-- Album art -->
+          <div class="wmp-album-art">
+            <svg width="60" height="60" viewBox="0 0 60 60">
+              <rect width="60" height="60" fill="#1a2a4a"/>
+              <circle cx="30" cy="30" r="22" fill="#0a1a30"/>
+              <circle cx="30" cy="30" r="8" fill="#1a2a4a"/>
+              <ellipse cx="24" cy="18" rx="14" ry="10" fill="none" stroke="#2a4a7a" stroke-width="1.5" transform="rotate(-30 24 18)"/>
+              <text x="30" y="34" text-anchor="middle" fill="#4a7aaa" font-size="18">♪</text>
+            </svg>
           </div>
-          <span class="wmp-time" id="wmp-total">0:00</span>
-        </div>
-
-        <!-- Transport controls -->
-        <div class="wmp-controls">
-          <div class="wmp-controls-left">
-            <button class="wmp-ctrl-btn wmp-shuffle" onclick="wmpToggleShuffle()" id="wmp-shuffle-btn" title="Shuffle">🔀</button>
-            <button class="wmp-ctrl-btn wmp-repeat"  onclick="wmpToggleRepeat()"  id="wmp-repeat-btn"  title="Repeat">🔁</button>
-          </div>
-          <div class="wmp-controls-center">
-            <button class="wmp-ctrl-btn wmp-prev" onclick="wmpPrev()" title="Previous">⏮</button>
-            <button class="wmp-ctrl-btn wmp-play" onclick="wmpPlayPause()" id="wmp-play-btn" title="Play/Pause">▶</button>
-            <button class="wmp-ctrl-btn wmp-stop" onclick="wmpStop()" title="Stop">⏹</button>
-            <button class="wmp-ctrl-btn wmp-next" onclick="wmpNext()" title="Next">⏭</button>
-          </div>
-          <div class="wmp-controls-right">
-            <span class="wmp-vol-icon">🔊</span>
-            <input class="wmp-volume" id="wmp-volume" type="range" min="0" max="100" value="80" oninput="wmpSetVolume(this.value)" title="Volume"/>
+          <!-- Playlist -->
+          <div class="wmp-playlist" id="wmp-playlist">
+            <!-- populated by JS -->
           </div>
         </div>
 
       </div><!-- /wmp-main -->
     </div><!-- /wmp-body -->
 
-    <!-- Hidden audio element for WMP -->
+    <!-- ── Transport / controls chrome ── -->
+    <div class="wmp-chrome">
+
+      <!-- Seek bar row -->
+      <div class="wmp-seek-row">
+        <span class="wmp-time" id="wmp-elapsed">0:00</span>
+        <div class="wmp-seekbar" id="wmp-seekbar" onclick="wmpSeek(event)">
+          <div class="wmp-seek-fill" id="wmp-seek-fill"></div>
+          <div class="wmp-seek-thumb" id="wmp-seek-thumb"></div>
+        </div>
+        <span class="wmp-time" id="wmp-total">0:00</span>
+      </div>
+
+      <!-- Buttons row -->
+      <div class="wmp-btn-row">
+        <!-- Left: prev/play/pause/stop/next -->
+        <div class="wmp-transport">
+          <button class="wmp-tbtn" onclick="wmpPrev()" title="Previous">
+            <svg width="14" height="14" viewBox="0 0 14 14"><rect x="1" y="2" width="2.5" height="10" fill="currentColor"/><polygon points="12,2 12,12 3.5,7" fill="currentColor"/></svg>
+          </button>
+          <button class="wmp-tbtn wmp-tbtn-play" onclick="wmpPlayPause()" id="wmp-play-btn" title="Play/Pause">
+            <svg id="wmp-play-icon" width="14" height="14" viewBox="0 0 14 14"><polygon points="2,1 2,13 13,7" fill="currentColor"/></svg>
+          </button>
+          <button class="wmp-tbtn" onclick="wmpStop()" title="Stop">
+            <svg width="14" height="14" viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="10" fill="currentColor"/></svg>
+          </button>
+          <button class="wmp-tbtn" onclick="wmpNext()" title="Next">
+            <svg width="14" height="14" viewBox="0 0 14 14"><rect x="10.5" y="2" width="2.5" height="10" fill="currentColor"/><polygon points="2,2 2,12 10.5,7" fill="currentColor"/></svg>
+          </button>
+        </div>
+
+        <!-- Center: shuffle + repeat -->
+        <div class="wmp-extras">
+          <button class="wmp-tbtn wmp-tbtn-sm" onclick="wmpToggleShuffle()" id="wmp-shuffle-btn" title="Shuffle">
+            <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 3h3l5 6h2M1 9h3l2-2.4M8 3l2 0 0 2M8 9l2 0 0-2" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg>
+          </button>
+          <button class="wmp-tbtn wmp-tbtn-sm" onclick="wmpToggleRepeat()" id="wmp-repeat-btn" title="Repeat">
+            <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 8 Q1 5 4 3 L8 3 M10 4 Q11 7 8 9 L4 9 M8 7 L10 9 L8 11" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+
+        <!-- Right: mute + volume -->
+        <div class="wmp-vol-group">
+          <svg class="wmp-vol-icon" width="14" height="14" viewBox="0 0 14 14">
+            <polygon points="1,5 1,9 4,9 8,12 8,2 4,5" fill="#aaa"/>
+            <path d="M9.5 4.5 Q12 7 9.5 9.5" stroke="#aaa" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+            <path d="M10.5 2.5 Q14 7 10.5 11.5" stroke="#aaa" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+          </svg>
+          <input class="wmp-volume" id="wmp-volume" type="range" min="0" max="100" value="80" oninput="wmpSetVolume(this.value)" title="Volume"/>
+        </div>
+      </div>
+
+    </div><!-- /wmp-chrome -->
+
+    <!-- Hidden audio element -->
     <audio id="wmp-audio" preload="metadata"></audio>
 
+    <!-- Status bar -->
     <div class="win-statusbar wmp-statusbar" id="wmp-statusbar">Ready</div>
   </div>
   <!-- =================== /MEDIA PLAYER =================== -->

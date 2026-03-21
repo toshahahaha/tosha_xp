@@ -2276,140 +2276,142 @@ button, input, textarea, select, label {
 
 /* ===================== WINDOWS MEDIA PLAYER ===================== */
 
-/* WMP window titlebar: dark with green accent */
-.wmp-titlebar {
-  background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1e 100%) !important;
-  border-bottom: 2px solid #2a8a2a;
+/* Override xp-window border to match WMP's silver chrome */
+.wmp-window {
+  border: 2px solid #6a8aaa !important;
+  border-radius: 6px 6px 0 0 !important;
 }
 
+/* Title bar — classic WMP blue gradient */
+.wmp-titlebar {
+  background: linear-gradient(180deg, #2060c8 0%, #1a50b8 40%, #1040a0 100%) !important;
+  border-bottom: 1px solid #0a3080 !important;
+}
+
+/* Menu bar — light silver like XP */
 .wmp-menubar {
-  background: #1a1a1a !important;
-  border-bottom: 1px solid #333 !important;
+  background: linear-gradient(180deg, #dde8f8 0%, #c8d8f0 100%) !important;
+  border-bottom: 1px solid #8aaace !important;
 }
 .wmp-menubar .win-menu-item {
-  color: #ccc !important;
+  color: #000 !important;
   font-size: 11px;
+  font-family: Tahoma, sans-serif;
 }
 .wmp-menubar .win-menu-item:hover {
   background: #316ac5 !important;
   color: white !important;
 }
 
-/* Main body layout */
+/* ── Song info / marquee bar ── */
+.wmp-infobar {
+  display: flex;
+  align-items: center;
+  background: linear-gradient(180deg, #1a3a7a 0%, #0f2a6a 100%);
+  border-bottom: 1px solid #0a1a50;
+  padding: 3px 8px;
+  flex-shrink: 0;
+  gap: 8px;
+  min-height: 22px;
+  overflow: hidden;
+}
+.wmp-infobar-marquee {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.wmp-infobar-marquee span {
+  font-size: 11px;
+  font-weight: bold;
+  color: #c8e0ff;
+  font-family: Tahoma, sans-serif;
+  letter-spacing: 0.2px;
+}
+.wmp-infobar-np {
+  font-size: 10px;
+  color: #8ab8e8;
+  font-family: Tahoma, sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.wmp-infobar-np:hover { color: #c8e0ff; }
+
+/* ── Main body layout ── */
 .wmp-body {
   display: flex;
   flex: 1;
   overflow: hidden;
-  background: #0a0a14;
+  background: #c0cce0;
+  gap: 0;
 }
 
-/* LEFT sidebar: playlist */
-.wmp-sidebar {
-  width: 170px;
-  min-width: 170px;
-  background: linear-gradient(180deg, #111122 0%, #0a0a18 100%);
-  border-right: 1px solid #2a2a4a;
+/* ── LEFT: classic XP nav panel ── */
+.wmp-nav {
+  width: 88px;
+  min-width: 88px;
+  background: linear-gradient(180deg, #b8c8e0 0%, #a8b8d8 100%);
+  border-right: 2px solid #8aaace;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-}
-
-.wmp-sidebar-title {
-  background: linear-gradient(90deg, #1a3a6a 0%, #0f2a4a 100%);
-  color: #7ab8ff;
-  font-size: 10px;
-  font-weight: bold;
-  padding: 5px 8px;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  border-bottom: 1px solid #2a4a7a;
+  padding: 4px 0;
+  overflow-y: auto;
+  overflow-x: hidden;
   flex-shrink: 0;
 }
-
-.wmp-playlist {
-  flex: 1;
-  overflow-y: auto;
-  padding: 4px 0;
-}
-
-.wmp-pl-item {
+.wmp-nav-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 5px 8px;
+  gap: 3px;
+  padding: 7px 4px;
   cursor: pointer;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 9px;
+  font-family: Tahoma, sans-serif;
+  color: #1a2a4a;
+  text-align: center;
+  line-height: 1.2;
+  border-bottom: 1px solid rgba(255,255,255,0.5);
   transition: background 0.1s;
 }
-
-.wmp-pl-item:hover {
-  background: rgba(49,106,197,0.3);
+.wmp-nav-item:hover {
+  background: rgba(255,255,255,0.4);
+  color: #000;
 }
-
-.wmp-pl-item.active {
-  background: linear-gradient(90deg, #1a3a8a 0%, #2a5aaa 100%);
-  border-left: 3px solid #5aaa5a;
+.wmp-nav-active {
+  background: linear-gradient(180deg, #e8f0ff 0%, #d8e8ff 100%);
+  color: #0a1a6a;
+  font-weight: bold;
+  border-left: 2px solid #3a6ac8;
 }
-
-.wmp-pl-num {
-  font-size: 9px;
-  color: #4a6a8a;
-  min-width: 14px;
-  text-align: right;
-  font-family: 'Courier New', monospace;
-}
-
-.wmp-pl-info { flex: 1; min-width: 0; }
-.wmp-pl-title {
-  font-size: 10px;
-  color: #ddeeff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-weight: 600;
-}
-.wmp-pl-artist {
-  font-size: 9px;
-  color: #6a8aaa;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.wmp-pl-playing {
-  font-size: 10px;
-  color: #5aff5a;
+.wmp-nav-item svg {
   flex-shrink: 0;
-  animation: wmpPulse 1.2s ease-in-out infinite;
-}
-@keyframes wmpPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
 }
 
-/* RIGHT: viz + controls */
+/* ── CENTER: viz + now-playing right panel ── */
 .wmp-main {
   flex: 1;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   min-width: 0;
-  background: #050510;
+  background: #000;
 }
 
-/* Visualization area */
+/* Visualization canvas area */
 .wmp-viz-wrap {
   flex: 1;
   position: relative;
   background: #000;
   overflow: hidden;
+  min-width: 0;
 }
-
 .wmp-canvas {
   width: 100%;
   height: 100%;
   display: block;
 }
 
-/* Prev/next viz buttons + label bar — sits at bottom of canvas */
+/* Viz preset switcher — bottom bar over canvas */
 .wmp-viz-switcher {
   position: absolute;
   bottom: 0;
@@ -2418,216 +2420,306 @@ button, input, textarea, select, label {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  background: rgba(0,0,0,0.55);
-  padding: 3px 8px;
+  gap: 4px;
+  background: rgba(0,0,0,0.6);
+  padding: 2px 6px;
   backdrop-filter: blur(2px);
 }
-
 .wmp-viz-label {
-  font-size: 9px;
-  color: rgba(130,200,255,0.85);
-  font-family: 'Courier New', monospace;
-  letter-spacing: 1px;
-  text-transform: uppercase;
+  font-size: 8px;
+  color: rgba(180,220,255,0.9);
+  font-family: Tahoma, monospace;
   flex: 1;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 240px;
+  max-width: 200px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
-
 .wmp-viz-btn {
-  background: rgba(20,40,80,0.7);
-  border: 1px solid rgba(80,120,200,0.4);
-  color: rgba(150,200,255,0.8);
-  font-size: 9px;
-  width: 20px;
-  height: 18px;
+  background: rgba(30,60,120,0.7);
+  border: 1px solid rgba(100,160,220,0.5);
+  color: rgba(180,220,255,0.9);
+  font-size: 8px;
+  width: 16px;
+  height: 14px;
   cursor: pointer;
   border-radius: 2px;
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.1s;
   flex-shrink: 0;
 }
-.wmp-viz-btn:hover {
-  background: rgba(49,106,197,0.7);
+.wmp-viz-btn:hover { background: rgba(49,106,197,0.8); color: #fff; }
+
+/* ── NOW PLAYING right panel ── */
+.wmp-np-panel {
+  width: 148px;
+  min-width: 148px;
+  background: linear-gradient(180deg, #dde8f8 0%, #c8d8f0 100%);
+  border-left: 2px solid #8aaace;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.wmp-np-header {
+  background: linear-gradient(180deg, #3a6ac8 0%, #1a4aaa 100%);
   color: white;
-}
-
-/* Now-playing text overlay (top) */
-.wmp-now-playing-overlay {
-  position: absolute;
-  top: 10px;
-  left: 0;
-  right: 0;
-  text-align: center;
-  pointer-events: none;
-}
-.wmp-overlay-title {
-  font-size: 13px;
-  font-weight: bold;
-  color: rgba(255,255,255,0.85);
-  text-shadow: 0 0 10px rgba(80,160,255,0.8), 0 1px 3px rgba(0,0,0,0.8);
-  letter-spacing: 0.5px;
-  font-family: 'Wix Madefor Display', Tahoma, sans-serif;
-}
-.wmp-overlay-artist {
   font-size: 10px;
-  color: rgba(120,200,255,0.7);
-  text-shadow: 0 0 8px rgba(80,160,255,0.6);
-  margin-top: 2px;
-  font-style: italic;
+  font-weight: bold;
+  font-family: Tahoma, sans-serif;
+  padding: 4px 8px;
+  flex-shrink: 0;
+  letter-spacing: 0.3px;
 }
-
-/* Progress / seek bar */
-.wmp-progress-wrap {
+.wmp-album-art {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  background: #0d0d20;
-  border-top: 1px solid #1a1a3a;
+  justify-content: center;
+  padding: 8px;
+  background: #b8c8e0;
+  border-bottom: 1px solid #8aaace;
   flex-shrink: 0;
 }
+.wmp-album-art svg {
+  border: 1px solid #6a8aaa;
+  border-radius: 2px;
+}
 
+/* Playlist in now-playing panel */
+.wmp-playlist {
+  flex: 1;
+  overflow-y: auto;
+  background: #f0f4fc;
+  padding: 2px 0;
+}
+.wmp-pl-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  cursor: pointer;
+  border-bottom: 1px solid #d0daea;
+  transition: background 0.1s;
+}
+.wmp-pl-item:hover {
+  background: #d0e0f8;
+}
+.wmp-pl-item.active {
+  background: linear-gradient(90deg, #c8dcf8 0%, #d8e8ff 100%);
+  border-left: 2px solid #3a6ac8;
+}
+.wmp-pl-num {
+  font-size: 9px;
+  color: #6a8aaa;
+  min-width: 12px;
+  text-align: right;
+  font-family: Tahoma, monospace;
+  flex-shrink: 0;
+}
+.wmp-pl-info { flex: 1; min-width: 0; }
+.wmp-pl-title {
+  font-size: 10px;
+  color: #111;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  font-family: Tahoma, sans-serif;
+}
+.wmp-pl-artist {
+  font-size: 9px;
+  color: #4a6a8a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: Tahoma, sans-serif;
+}
+.wmp-pl-playing {
+  font-size: 10px;
+  color: #2060c0;
+  flex-shrink: 0;
+  animation: wmpPulse 1.2s ease-in-out infinite;
+}
+@keyframes wmpPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.2; }
+}
+
+/* Scrollbar for playlist */
+.wmp-playlist::-webkit-scrollbar { width: 8px; }
+.wmp-playlist::-webkit-scrollbar-track { background: #d0daea; }
+.wmp-playlist::-webkit-scrollbar-thumb { background: #8aaace; border-radius: 3px; }
+.wmp-playlist::-webkit-scrollbar-thumb:hover { background: #3a6ac8; }
+
+/* ── Transport / controls chrome ── */
+.wmp-chrome {
+  background: linear-gradient(180deg, #b0c0d8 0%, #9ab0cc 50%, #8aa0bc 100%);
+  border-top: 2px solid #6a8aaa;
+  flex-shrink: 0;
+  padding: 5px 8px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* Seek bar row */
+.wmp-seek-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .wmp-time {
   font-size: 10px;
-  color: #8ab8e8;
-  font-family: 'Courier New', monospace;
-  min-width: 32px;
+  color: #1a2a4a;
+  font-family: Tahoma, monospace;
+  min-width: 30px;
   white-space: nowrap;
 }
-
 .wmp-seekbar {
   flex: 1;
-  height: 6px;
-  background: #1a1a3a;
-  border-radius: 3px;
+  height: 8px;
+  background: linear-gradient(180deg, #7a9ab8 0%, #9abcd8 100%);
+  border-radius: 4px;
   position: relative;
   cursor: pointer;
-  border: 1px solid #2a2a5a;
+  border: 1px solid #4a6a8a;
+  box-shadow: inset 1px 1px 2px rgba(0,0,0,0.25);
 }
-
 .wmp-seek-fill {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, #1a6aaa 0%, #5aaa5a 100%);
-  border-radius: 3px;
+  background: linear-gradient(180deg, #5aaa5a 0%, #38883a 100%);
+  border-radius: 4px;
   transition: width 0.5s linear;
 }
-
 .wmp-seek-thumb {
   position: absolute;
   top: 50%;
   left: 0%;
   transform: translate(-50%, -50%);
-  width: 12px;
-  height: 12px;
-  background: radial-gradient(circle at 35% 35%, #c0e0ff, #4a8ae8);
+  width: 14px;
+  height: 14px;
+  background: radial-gradient(circle at 35% 30%, #ffffff, #c0cce0);
   border-radius: 50%;
-  border: 1px solid #2a5aaa;
-  box-shadow: 0 0 4px rgba(80,160,255,0.6);
+  border: 1px solid #4a6a8a;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.8);
   cursor: pointer;
   transition: left 0.5s linear;
 }
 
-/* Transport controls */
-.wmp-controls {
+/* Buttons row */
+.wmp-btn-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: linear-gradient(180deg, #0d0d20 0%, #080818 100%);
-  border-top: 1px solid #1a1a3a;
-  flex-shrink: 0;
   gap: 8px;
 }
 
-.wmp-controls-left,
-.wmp-controls-right {
+/* Transport buttons group */
+.wmp-transport {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex: 1;
+  gap: 2px;
 }
-.wmp-controls-right { justify-content: flex-end; }
-.wmp-controls-center {
+.wmp-extras {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
+}
+.wmp-vol-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
 }
 
-.wmp-ctrl-btn {
-  background: linear-gradient(180deg, #1a2a4a 0%, #0f1a30 100%);
-  border: 1px solid #2a4a7a;
-  color: #8ab8ff;
-  font-size: 14px;
-  width: 32px;
-  height: 28px;
+/* Classic XP-style transport buttons */
+.wmp-tbtn {
+  width: 28px;
+  height: 24px;
+  background: linear-gradient(180deg, #dde8f8 0%, #b8cce0 50%, #a8bcd0 100%);
+  border: 1px solid #6a8aaa;
+  border-top-color: #c0d0e8;
+  border-left-color: #c0d0e8;
+  color: #1a3060;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 3px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.1s, color 0.1s;
   padding: 0;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 1px 1px 0 rgba(0,0,0,0.15);
+  transition: background 0.08s;
 }
-.wmp-ctrl-btn:hover {
-  background: linear-gradient(180deg, #2a4a8a 0%, #1a2a5a 100%);
-  color: white;
-  border-color: #5a8aff;
+.wmp-tbtn:hover {
+  background: linear-gradient(180deg, #eef4ff 0%, #ccdcf0 50%, #b8ccdf 100%);
+  color: #000;
 }
-.wmp-ctrl-btn:active {
-  background: linear-gradient(180deg, #0f1a30 0%, #1a2a4a 100%);
-}
-
-/* Play button slightly bigger */
-.wmp-play {
-  width: 40px;
-  height: 34px;
-  font-size: 18px;
-  background: linear-gradient(180deg, #1a4a1a 0%, #0f2a0f 100%);
-  border-color: #2a8a2a;
-  color: #5aff5a;
-}
-.wmp-play:hover {
-  background: linear-gradient(180deg, #2a8a2a 0%, #1a5a1a 100%);
-  color: white;
-  border-color: #7aff7a;
+.wmp-tbtn:active {
+  background: linear-gradient(180deg, #a8bcd0 0%, #b8cce0 100%);
+  border-top-color: #6a8aaa;
+  border-left-color: #6a8aaa;
+  border-bottom-color: #c0d0e8;
+  border-right-color: #c0d0e8;
+  box-shadow: inset 1px 1px 2px rgba(0,0,0,0.2);
 }
 
-/* Shuffle/Repeat active state */
-.wmp-shuffle.active, .wmp-repeat.active {
-  background: linear-gradient(180deg, #1a4a8a 0%, #0f2a5a 100%);
-  color: #7adfff;
-  border-color: #5aafff;
+/* Play button — slightly wider, green tint */
+.wmp-tbtn-play {
+  width: 34px;
+  height: 28px;
+  background: linear-gradient(180deg, #b0e0b0 0%, #70c070 40%, #50a850 100%);
+  border-color: #2a7a2a;
+  border-top-color: #80d080;
+  border-left-color: #80d080;
+  color: #003000;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 1px 1px 0 rgba(0,0,0,0.2);
+}
+.wmp-tbtn-play:hover {
+  background: linear-gradient(180deg, #c8f0c8 0%, #88d888 40%, #60c060 100%);
+  color: #001800;
+}
+.wmp-tbtn-play:active {
+  background: linear-gradient(180deg, #50a850 0%, #70c070 100%);
 }
 
-/* Volume */
-.wmp-vol-icon { font-size: 12px; color: #6a9acc; }
+/* Smaller shuffle/repeat buttons */
+.wmp-tbtn-sm {
+  width: 22px;
+  height: 22px;
+}
+.wmp-tbtn-sm.active {
+  background: linear-gradient(180deg, #b0c8e8 0%, #8aaace 50%, #6a8ab8 100%);
+  color: #fff;
+  border-color: #3a5a8a;
+}
+
+/* Volume icon + slider */
+.wmp-vol-icon {
+  flex-shrink: 0;
+  color: #2a4060;
+}
 .wmp-volume {
-  width: 70px;
+  width: 72px;
   height: 4px;
   cursor: pointer;
-  accent-color: #5aaa5a;
+  accent-color: #3a6ac8;
 }
 
-/* WMP statusbar */
+/* WMP statusbar — XP silver */
 .wmp-statusbar {
-  background: #0a0a18 !important;
-  color: #6a9acc !important;
-  border-top: 1px solid #1a1a3a !important;
-  font-family: 'Courier New', monospace !important;
+  background: linear-gradient(180deg, #c8d8ec 0%, #b8c8dc 100%) !important;
+  color: #1a2a4a !important;
+  border-top: 1px solid #8aaace !important;
+  font-family: Tahoma, sans-serif !important;
   font-size: 10px !important;
 }
 
-/* Scrollbar for playlist */
-.wmp-playlist::-webkit-scrollbar { width: 6px; }
-.wmp-playlist::-webkit-scrollbar-track { background: #0a0a18; }
-.wmp-playlist::-webkit-scrollbar-thumb { background: #2a3a5a; border-radius: 3px; }
-.wmp-playlist::-webkit-scrollbar-thumb:hover { background: #3a5a8a; }
+/* Scrollbar for nav */
+.wmp-nav::-webkit-scrollbar { width: 6px; }
+.wmp-nav::-webkit-scrollbar-track { background: #a8b8d0; }
+.wmp-nav::-webkit-scrollbar-thumb { background: #6a8aaa; border-radius: 3px; }
