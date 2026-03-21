@@ -80,189 +80,160 @@ button, input, textarea, select, label {
   z-index: 9999;
   display: flex;
   flex-direction: column;
-
-  /* closer to ref: deeper mid blue */
-  background: linear-gradient(to bottom, #2c61c6 0%, #3d6fc4 55%, #2c61c6 100%);
+  /* Flat periwinkle-blue body, matching screenshot */
+  background: #5a6db5;
 }
 
-/* very faint center highlight on login screen */
-#login-screen::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  pointer-events:none;
-  z-index:0;
-  opacity:.10;
-  background: radial-gradient(circle at 50% 45%, rgba(255,255,255,.20), transparent 60%);
+/* Fine dot-matrix texture over the whole screen — like the screenshot */
+#login-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,0.18) 1px, transparent 1px);
+  background-size: 3px 3px;
+  opacity: 0.45;
 }
 
-/* Top bar (more like the first: less “busy”) */
+/* All direct children sit above the texture */
+#login-screen > * { position: relative; z-index: 1; }
+
+/* ── Top bar: narrow dark navy, no content ── */
 .login-top-bar {
-  position: relative;
-  height: 72px;
-  background: linear-gradient(180deg, #1b4fb4 0%, #2f67cb 100%);
-  border-bottom: 2px solid rgba(255,255,255,0.25);
-  display: flex;
-  align-items: center;
-  padding: 0 40px;
+  height: 58px;
+  background: #1a2f8a;
+  /* thin bright line at very bottom of top bar */
+  border-bottom: 1px solid rgba(255,255,255,0.18);
+  flex-shrink: 0;
 }
 
-.login-top-bar .logo-text {
-  color: white;
-  font-size: 28px;
-  font-weight: 800;
-  font-family: 'Wix Madefor Display', Tahoma, sans-serif;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  letter-spacing: -0.3px;
-}
-
-.win-logo-login {
-  width: 38px;
-  height: 38px;
-  filter: drop-shadow(0 6px 10px rgba(0,0,0,.25));
-  user-select: none;
-  -webkit-user-drag: none;
-}
-
-.top-xp{
-  font-style: italic;
-  font-size: 16px;
-  color: #ff8040;
-  font-family:'Wix Madefor Display',Tahoma,sans-serif;
-  font-weight: 800;
-  margin-left: 2px;
-}
-
-.login-tagline {
-  color: #c8d8f8;
-  font-style: italic;
-  font-size: 13px;
-  font-family: 'Work Sans', Tahoma, sans-serif;
-  font-weight: 400;
-  margin-top: 3px;
-}
-
-/* Center layout */
+/* ── Center area ── */
 .login-center {
-  position: relative;
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0;
 }
 
-/* LEFT side — match first screenshot */
+/* ── LEFT: logo + instruction ── */
 .login-left {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 22px;
+  gap: 28px;
   color: white;
+  padding: 0 40px;
 }
 
 .login-left .logo-area {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
-/* big flag above the name */
-.login-flag{
-  width: 96px;
+/* Windows XP colored flag */
+.login-flag {
+  width: 88px;
   height: auto;
-  margin-bottom: 6px;
-  filter: drop-shadow(0 10px 14px rgba(0,0,0,.22));
-  user-select:none;
-  -webkit-user-drag:none;
+  filter: drop-shadow(0 6px 16px rgba(0,0,0,0.35));
+  user-select: none;
+  -webkit-user-drag: none;
+  margin-bottom: 4px;
 }
 
+/* "ToshaXP" wordmark */
 .login-xp-logo {
-  font-size: 62px;
+  font-size: 52px;
   font-weight: 800;
-  font-family: 'Wix Madefor Display', Tahoma, sans-serif;
+  font-family: 'Wix Madefor Display', 'Franklin Gothic Medium', Tahoma, sans-serif;
   color: white;
-  text-shadow: 2px 2px 10px rgba(0,0,80,0.45);
   line-height: 1;
-  letter-spacing: -0.8px;
+  letter-spacing: -1px;
+  text-shadow: 1px 2px 8px rgba(0,0,60,0.3);
 }
 
 .login-xp-logo sup {
-  font-size: 28px;
-  color: #ff8040;
+  font-size: 24px;
   font-style: italic;
+  font-weight: 800;
+  color: #e07030;
   font-family: 'Wix Madefor Display', Tahoma, sans-serif;
-  transform: translateY(-10px);
-  display: inline-block;
+  vertical-align: super;
+  margin-left: 1px;
 }
 
 .login-xp-sub {
-  color: rgba(255,255,255,.88);
   font-style: italic;
-  font-size: 15px;
+  font-size: 14px;
+  color: rgba(255,255,255,0.90);
   font-family: 'Work Sans', Tahoma, sans-serif;
   font-weight: 400;
-  letter-spacing: 0.2px;
-  margin-top: -2px;
+  letter-spacing: 0.1px;
 }
 
 .login-instruction {
-  color: rgba(255,255,255,.92);
-  font-size: 18px; /* closer to ref */
+  font-size: 17px;
+  color: rgba(255,255,255,0.93);
   font-family: 'Work Sans', Tahoma, sans-serif;
+  font-weight: 400;
+  text-align: center;
 }
 
-/* Divider like XP: faded ends */
+/* ── Divider ── */
 .login-divider {
   width: 1px;
-  height: 70%;
-  background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.35), transparent);
+  align-self: stretch;
+  margin: 40px 0;
+  background: linear-gradient(to bottom,
+    transparent 0%,
+    rgba(255,255,255,0.4) 20%,
+    rgba(255,255,255,0.4) 80%,
+    transparent 100%
+  );
+  flex-shrink: 0;
 }
 
-/* RIGHT */
+/* ── RIGHT: user account ── */
 .login-right {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  padding: 0 40px;
 }
 
 .user-button {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 18px;
   cursor: pointer;
-  padding: 10px 18px;
-  border-radius: 6px;
-  transition: background 0.15s, transform .12s, border-color .12s;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(255,255,255,.06);
-  box-shadow: 0 10px 22px rgba(0,0,0,.14);
+  padding: 8px 14px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  transition: background 0.12s;
 }
-
 .user-button:hover {
   background: rgba(255,255,255,0.10);
-  border-color: rgba(255,255,255,.2);
-  transform: translateY(-1px);
+  border-color: rgba(255,255,255,0.15);
 }
 
+/* Avatar: squared with light-blue border, like the screenshot */
 .user-avatar {
-  width: 70px;
-  height: 70px;
-  border: 3px solid #7fb0ff;
-  border-radius: 4px;
-  background: #1a3a8a;
+  width: 72px;
+  height: 72px;
+  border: 2px solid #8ab4e8;
+  border-radius: 3px;
+  background: #6080c0;
   overflow: hidden;
   flex-shrink: 0;
 }
-
 .user-avatar img {
   width: 100%;
   height: 100%;
@@ -273,45 +244,50 @@ button, input, textarea, select, label {
 
 .user-info { color: white; }
 
+/* Large name — matches screenshot weight/size */
 .user-name {
-  font-size: 30px; /* closer to ref */
+  font-size: 28px;
   font-weight: 600;
   font-family: 'Wix Madefor Display', Tahoma, sans-serif;
-  letter-spacing: 0.2px;
+  color: white;
+  letter-spacing: 0.1px;
+  line-height: 1.1;
 }
 
+/* Role: bold blue text, no pill — exactly like screenshot */
 .user-role {
   font-size: 13px;
-  color: #0a246a;
   font-weight: 700;
-  background: rgba(255,255,255,.60);
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 999px;
-  margin-top: 2px;
+  color: #3a5fc8;
+  font-family: 'Work Sans', Tahoma, sans-serif;
+  margin-top: 3px;
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  display: block;
 }
 
-/* Bottom bar like XP (orange line + right copy) */
+/* ── Bottom bar ── */
 .login-bottom {
   position: relative;
-  height: 76px;
-  background: linear-gradient(180deg, #0f4da8 0%, #1f5bc4 60%, #0f47a0 100%);
-  border-top: 2px solid rgba(255,255,255,0.22);
+  height: 72px;
+  flex-shrink: 0;
+  background: #1a2f8a;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 18px;
+  padding: 0 20px;
   color: white;
   font-family: 'Work Sans', Tahoma, sans-serif;
 }
 
-.login-bottom::before{
-  content:"";
-  position:absolute;
-  left:0; right:0; top:0;
-  height:2px;
-  background:#ff8b2a;
-  opacity:.85;
+/* Orange line at top of bottom bar */
+.login-bottom::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 2px;
+  background: #d4600a;
 }
 
 .restart-btn {
@@ -323,36 +299,36 @@ button, input, textarea, select, label {
   border: none;
   color: white;
   font-family: var(--font-pixel);
-  font-size: 11px;
+  font-size: 12px;
   padding: 8px 10px;
-  border-radius: 6px;
+  border-radius: 4px;
 }
+.restart-btn:hover { background: rgba(255,255,255,0.08); }
 
-.restart-btn:hover { background: rgba(255,255,255,.08); }
-
+/* Green starburst icon matching XP restart button */
 .restart-icon {
-  width: 26px;
-  height: 26px;
-  background: radial-gradient(circle, #6adc6a 0%, #2a9a2a 60%, #1a6a1a 100%);
-  border-radius: 8px;
-  border: 2px solid rgba(0,0,0,.25);
+  width: 28px;
+  height: 28px;
+  background: radial-gradient(circle at 40% 35%, #80e060 0%, #30a030 55%, #186018 100%);
+  border-radius: 6px;
+  border: 1.5px solid rgba(0,0,0,0.3);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  box-shadow: inset 0 0 0 2px rgba(255,255,255,.18), 0 6px 14px rgba(0,0,0,.18);
+  font-size: 14px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 6px rgba(0,0,0,0.3);
+  flex-shrink: 0;
 }
 
-.login-bottom-copy{
+.login-bottom-copy {
   text-align: right;
-  font-size: 15px;
-  line-height: 1.15;
-  text-shadow: 0 1px 6px rgba(0,0,0,.18);
+  font-size: 14px;
+  line-height: 1.4;
+  color: rgba(255,255,255,0.95);
 }
-.login-bottom-sub{
-  font-size: 13px;
-  color: rgba(255,255,255,.78);
-  margin-top: 3px;
+.login-bottom-sub {
+  font-size: 12px;
+  color: rgba(255,255,255,0.72);
 }
 
 /* ===================== WELCOME SCREEN ===================== */

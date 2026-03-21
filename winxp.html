@@ -47,58 +47,51 @@
 
 <!-- =================== LOGIN SCREEN =================== -->
 <div id="login-screen">
-  <div class="login-top-bar">
-    <div class="logo-text">
-      <!-- ✅ Use your Microsoft flag PNG here -->
-      <img class="win-logo-login" src="boot_windows.png" alt="Microsoft flag" draggable="false" />
 
-      <div>
-        <div>
-          Tosha
-          <sup class="top-xp">xp</sup>
-        </div>
-        <div class="login-tagline">Visual Designer &amp; Technical Sales</div>
-      </div>
-    </div>
-  </div>
+  <!-- Top dark navy bar — plain, no content -->
+  <div class="login-top-bar"></div>
 
+  <!-- Center: left logo + divider + right user -->
   <div class="login-center">
+
+    <!-- LEFT: Windows flag + wordmark + instruction -->
     <div class="login-left">
       <div class="logo-area">
-        <!-- ✅ Big centered flag like the first reference -->
-        <img class="login-flag" src="microsoft-flag.png" alt="Microsoft flag" draggable="false" />
-
+        <img class="login-flag" src="boot_windows.png" alt="Windows flag" draggable="false" />
         <div class="login-xp-logo">Tosha<sup>xp</sup></div>
         <div class="login-xp-sub">Visual Designer &amp; Technical Sales</div>
       </div>
-
       <div class="login-instruction">To begin, click on Tosha to log in</div>
     </div>
 
+    <!-- Vertical divider -->
     <div class="login-divider"></div>
 
+    <!-- RIGHT: user account -->
     <div class="login-right">
       <div class="user-button" onclick="doLogin()">
-        <div class="user-avatar"><img src="avatar.png" alt="Tosha"/></div>
+        <div class="user-avatar"><img src="avatar.png" alt="Tosha" draggable="false"/></div>
         <div class="user-info">
           <div class="user-name">Tosha</div>
-          <div class="user-role"> Master</div>
+          <div class="user-role">Visual Designer &amp; Technical Sales</div>
         </div>
       </div>
     </div>
+
   </div>
 
+  <!-- Bottom dark bar -->
   <div class="login-bottom">
     <button class="restart-btn" onclick="doRestart()">
       <div class="restart-icon">⟳</div>
       Restart Tosha XP
     </button>
-
     <div class="login-bottom-copy">
       <div>After you log on, the system's yours to explore.</div>
       <div class="login-bottom-sub">Every detail has been designed with a purpose.</div>
     </div>
   </div>
+
 </div>
 
 <!-- =================== WELCOME SCREEN =================== -->
