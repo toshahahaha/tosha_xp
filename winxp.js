@@ -2585,20 +2585,22 @@ function ipodRewind() {
 
     // ── Wire Spotify Web Playback SDK callbacks ───────────────
     // Called by spotify-player.js once the device is ready
-    window.onSpotifyPlayerReady = function (deviceId) {
+    function onSdkReady(deviceId) {
       console.log('[WMP] Spotify SDK device ready:', deviceId);
       wmpSdkActive = true;
-
-      // Show SDK status in statusbar
       if (statusBar) statusBar.textContent = '♫ Spotify Premium — ready';
-
-      // If we already have songs loaded, transfer playback context silently
-      // (don't auto-play — wait for user gesture)
       const badge = document.getElementById('wmp-spotify-badge');
       if (badge) badge.style.color = '#5aff5a';
-    };
+    }
 
-    // Called every time the SDK player state changes
+    window.onSpotifyPlayerReady = onSdkReady;
+
+    // If the SDK was already ready before the WMP window opened, apply now
+    if (window.spotifyPlayerReady && window.spotifyDeviceId) {
+      onSdkReady(window.spotifyDeviceId);
+    }
+
+    // Called every time the SDK player state changes (also stored globally for late-init)
     window.onSpotifyPlayerState = function (state) {
       if (!state) return;
 
