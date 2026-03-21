@@ -773,13 +773,21 @@
           </div>
           <!-- Album art -->
           <div class="wmp-album-art">
-            <svg width="60" height="60" viewBox="0 0 60 60">
+            <img id="wmp-album-art" src="" alt="Album Art"
+              style="width:60px;height:60px;object-fit:cover;border-radius:3px;display:none;" draggable="false"/>
+            <svg id="wmp-album-art-placeholder" width="60" height="60" viewBox="0 0 60 60">
               <rect width="60" height="60" fill="#1a2a4a"/>
               <circle cx="30" cy="30" r="22" fill="#0a1a30"/>
               <circle cx="30" cy="30" r="8" fill="#1a2a4a"/>
               <ellipse cx="24" cy="18" rx="14" ry="10" fill="none" stroke="#2a4a7a" stroke-width="1.5" transform="rotate(-30 24 18)"/>
               <text x="30" y="34" text-anchor="middle" fill="#4a7aaa" font-size="18">♪</text>
             </svg>
+          </div>
+          <!-- Now playing info labels -->
+          <div class="wmp-np-info">
+            <div class="wmp-np-title"  id="wmp-np-title"></div>
+            <div class="wmp-np-artist" id="wmp-np-artist"></div>
+            <div class="wmp-np-album"  id="wmp-np-album"></div>
           </div>
           <!-- Playlist -->
           <div class="wmp-playlist" id="wmp-playlist">
@@ -1287,7 +1295,7 @@
 <script src="https://cdn.jsdelivr.net/npm/butterchurn-presets@2.4.7/lib/butterchurnPresets.min.js"></script>
 <script src="winxp.js"></script>
 
-<!-- Spotify playlist sync config + module -->
+<!-- Spotify config (shared by sync + player modules) -->
 <script>
   window.SPOTIFY_CONFIG = {
     playlistId: '5TlfcZYMSHIai5JAPfXudR',
@@ -1295,6 +1303,13 @@
     tokenUrl:   'https://roaring-florentine-4582da.netlify.app/.netlify/functions/spotify-token',
   };
 </script>
+
+<!-- Spotify Web Playback SDK (full song playback — Premium required) -->
+<!-- Must be loaded BEFORE spotify-player.js so window.Spotify is available -->
+<script src="https://sdk.scdn.co/spotify-player.js"></script>
+<script src="spotify-player.js"></script>
+
+<!-- Spotify playlist sync (polls for track updates) -->
 <script src="spotify-sync.js"></script>
 </body>
 </html>

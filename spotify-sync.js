@@ -65,7 +65,7 @@
   // ── Fetch all tracks (handles pagination) ───────────────────────
   async function fetchAllTracks() {
     const tracks = [];
-    let url = '/playlists/' + PLAYLIST_ID + '/tracks?limit=50&fields=next,items(track(name,artists,duration_ms,preview_url,external_urls))';
+    let url = '/playlists/' + PLAYLIST_ID + '/tracks?limit=50&fields=next,items(track(name,uri,artists,album(name,images),duration_ms,preview_url,external_urls))';
     while (url) {
       const data = await spotifyGet(url);
       if (!data) break;
@@ -83,10 +83,12 @@
     return tracks.map(t => ({
       title:      t.name,
       artist:     (t.artists || []).map(a => a.name).join(', '),
-      album:      '',
-      src:        t.preview_url || '',           // 30s preview URL
+      album:      t.album?.name || '',
+      src:        t.preview_url || '',           // 30s preview URL (fallback)
+      uri:        t.uri        || '',            // spotify:track:xxx (full playback via SDK)
       spotifyUrl: t.external_urls?.spotify || '',
       duration:   Math.round((t.duration_ms || 0) / 1000),
+      albumArt:   (t.album?.images || [])[0]?.url || '',
     }));
   }
 
