@@ -9,7 +9,34 @@
  *   SPOTIFY_CLIENT_ID      = 7cd580ba84714012a9dc4a26a656814c
  *   SPOTIFY_CLIENT_SECRET  = <your secret>
  *   SPOTIFY_REFRESH_TOKEN  = <set after running spotify-auth.html once>
+ *   NETLIFY_API_TOKEN      = personal access token for auto-saving rotated refresh tokens
+ *   NETLIFY_ACCOUNT_ID     = Netlify account ID (for env var API)
  */
+
+// Save a rotated refresh token back to Netlify env vars automatically
+async function saveRotatedToken(newRefreshToken) {
+  const apiToken = process.env.NETLIFY_API_TOKEN;
+  const accountId = process.env.NETLIFY_ACCOUNT_ID;
+  if (!apiToken || !accountId) return; // silently skip if not configured
+
+  const base = `https://api.netlify.com/api/v1/accounts/${accountId}/env/SPOTIFY_REFRESH_TOKEN`;
+  const headers = {
+    'Authorization': `Bearer ${apiToken}`,
+    'Content-Type': 'application/json',
+  };
+
+  // Delete the old value and recreate with the new token
+  await fetch(base, { method: 'DELETE', headers }).catch(() => {});
+  await fetch(`https://api.netlify.com/api/v1/accounts/${accountId}/env`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify([{
+      key: 'SPOTIFY_REFRESH_TOKEN',
+      scopes: ['builds', 'functions', 'post_processing', 'runtime'],
+      values: [{ value: newRefreshToken, context: 'all' }],
+    }]),
+  }).catch(() => {});
+}
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -108,7 +135,11 @@ exports.handler = async (event) => {
       };
     }
 
-    // If Spotify rotated the refresh token, pass it back so the client can use it
+    // If Spotify rotated the refresh token, auto-save it to Netlify env vars
+    if (data.refresh_token) {
+      saveRotatedToken(data.refresh_token); // fire-and-forget, don't await
+    }
+
     return {
       statusCode: 200,
       headers: { 'Access-Control-Allow-Origin': '*' },
