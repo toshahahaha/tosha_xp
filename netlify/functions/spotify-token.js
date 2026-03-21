@@ -90,8 +90,16 @@ exports.handler = async (event) => {
     });
     const data = await res.json();
 
+    if (!res.ok || !data.access_token) {
+      return {
+        statusCode: 400,
+        headers: { 'Access-Control-Allow-Origin': '*' },
+        body: JSON.stringify({ error: data.error || 'token_refresh_failed', error_description: data.error_description || JSON.stringify(data) }),
+      };
+    }
+
     return {
-      statusCode: res.ok ? 200 : 400,
+      statusCode: 200,
       headers: { 'Access-Control-Allow-Origin': '*' },
       body: JSON.stringify({ access_token: data.access_token, expires_in: data.expires_in }),
     };
