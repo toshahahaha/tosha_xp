@@ -37,12 +37,19 @@
       const res  = await fetch(TOKEN_URL, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ grant_type: 'refresh_token' }),
+        body:    JSON.stringify({
+          grant_type:    'refresh_token',
+          refresh_token: window._spotifyRefreshToken || undefined,
+        }),
       });
       const data = await res.json();
       if (!data.access_token) throw new Error(data.error || 'No access_token');
       accessToken    = data.access_token;
       tokenExpiresAt = Date.now() + (data.expires_in || 3600) * 1000;
+      // If Spotify rotated the refresh token, store it for future calls
+      if (data.refresh_token) {
+        window._spotifyRefreshToken = data.refresh_token;
+      }
       return accessToken;
     } catch (e) {
       console.error('[SpotifySync] Token refresh failed:', e);

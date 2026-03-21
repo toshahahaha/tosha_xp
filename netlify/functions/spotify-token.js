@@ -76,7 +76,8 @@ exports.handler = async (event) => {
 
   // ── 2. refresh_token: get a fresh access token (called by the site) ──
   if (grant_type === 'refresh_token') {
-    const refresh_token = process.env.SPOTIFY_REFRESH_TOKEN;
+    // Allow client to pass a rotated refresh token (in case Spotify issued a new one)
+    const refresh_token = body.refresh_token || process.env.SPOTIFY_REFRESH_TOKEN;
     if (!refresh_token) {
       return {
         statusCode: 500,
@@ -107,10 +108,15 @@ exports.handler = async (event) => {
       };
     }
 
+    // If Spotify rotated the refresh token, pass it back so the client can use it
     return {
       statusCode: 200,
       headers: { 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify({ access_token: data.access_token, expires_in: data.expires_in }),
+      body: JSON.stringify({
+        access_token:  data.access_token,
+        expires_in:    data.expires_in,
+        refresh_token: data.refresh_token || null,  // new token if Spotify rotated it
+      }),
     };
   }
 
