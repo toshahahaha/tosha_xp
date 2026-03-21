@@ -74,18 +74,17 @@ exports.handler = async (event) => {
       };
     }
 
+    // PKCE-based refresh: send client_id + client_secret in body, no Basic auth header
     const params = new URLSearchParams({
-      grant_type:    'refresh_token',
+      grant_type:     'refresh_token',
       refresh_token,
-      client_id:     CLIENT_ID,
+      client_id:      CLIENT_ID,
+      client_secret:  CLIENT_SECRET,
     });
 
     const res  = await fetch('https://accounts.spotify.com/api/token', {
       method:  'POST',
-      headers: {
-        'Content-Type':  'application/x-www-form-urlencoded',
-        'Authorization': 'Basic ' + Buffer.from(CLIENT_ID + ':' + CLIENT_SECRET).toString('base64'),
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: params,
     });
     const data = await res.json();
