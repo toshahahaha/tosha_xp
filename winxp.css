@@ -2475,6 +2475,17 @@ button, input, textarea, select, label {
   padding: 4px 8px;
   flex-shrink: 0;
   letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+.wmp-spotify-badge {
+  font-size: 8px;
+  color: #1db954;
+  font-weight: normal;
+  white-space: nowrap;
+  letter-spacing: 0;
 }
 .wmp-album-art {
   display: flex;

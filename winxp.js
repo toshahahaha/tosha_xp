@@ -2464,6 +2464,43 @@ function ipodRewind() {
   };
 
   // ─────────────────────────────────────────────────────────────
+  // Spotify sync API — called by spotify-sync.js
+  // ─────────────────────────────────────────────────────────────
+
+  // Replace the WMP playlist with tracks from Spotify
+  window.wmpSetSpotifyPlaylist = function(songs) {
+    if (!songs || !songs.length) return;
+
+    // Replace the internal song library
+    WMP_SONGS.length = 0;
+    songs.forEach(s => WMP_SONGS.push(s));
+
+    // Rebuild the playlist UI
+    wmpBuildPlaylist();
+
+    // If nothing playing, load the first track silently
+    if (!wmpPlaying) {
+      wmpLoadTrack(0, false);
+    }
+
+    console.log('[WMP] Spotify playlist loaded:', songs.length, 'tracks');
+  };
+
+  // Update the "Now Playing" panel header with the playlist name
+  window.wmpSetSpotifyName = function(name) {
+    const el = document.getElementById('wmp-spotify-name');
+    if (el) el.textContent = name;
+  };
+
+  // If songs arrived before WMP was ready, apply them now on init
+  function wmpApplyPendingSpotify() {
+    if (window._spotifyPendingSongs) {
+      window.wmpSetSpotifyPlaylist(window._spotifyPendingSongs);
+      delete window._spotifyPendingSongs;
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
   // Init — called once when the WMP window first opens
   // ─────────────────────────────────────────────────────────────
   window.wmpInit = function() {
@@ -2500,6 +2537,9 @@ function ipodRewind() {
 
     // Boot Butterchurn visualizer immediately (no audio needed yet)
     wmpBootButterchurn();
+
+    // Apply any Spotify tracks that arrived before WMP was open
+    wmpApplyPendingSpotify();
   };
 
   // ─────────────────────────────────────────────────────────────

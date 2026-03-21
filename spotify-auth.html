@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Spotify Auth — Tosha XP</title>
+<style>
+  body { background:#1a1a2e; color:#eee; font-family:Tahoma,sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; }
+  .box { background:#0f0f1e; border:1px solid #2a4a7a; border-radius:8px; padding:32px 40px; max-width:520px; width:100%; }
+  h1 { color:#7ab8ff; font-size:18px; margin:0 0 8px; }
+  p  { color:#aaa; font-size:13px; margin:0 0 20px; line-height:1.5; }
+  button { background:linear-gradient(180deg,#1db954,#17a349); color:#fff; border:none; border-radius:4px; padding:10px 24px; font-size:14px; font-family:Tahoma,sans-serif; cursor:pointer; }
+  button:hover { background:linear-gradient(180deg,#25d466,#1db954); }
+  .token-box { margin-top:24px; display:none; }
+  .token-box label { font-size:11px; color:#7ab8ff; display:block; margin-bottom:4px; }
+  textarea { width:100%; box-sizing:border-box; background:#0a0a18; border:1px solid #2a4a7a; color:#5aff5a; font-family:'Courier New',monospace; font-size:11px; padding:8px; border-radius:4px; resize:none; }
+  .success { color:#5aff5a; font-size:13px; margin-top:12px; }
+  .error   { color:#ff5a5a; font-size:13px; margin-top:12px; }
+  .step { background:#1a2a4a; border-radius:4px; padding:10px 14px; margin-bottom:12px; font-size:12px; color:#aac8ff; }
+  .step strong { color:#fff; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>🎵 Spotify → Tosha XP</h1>
+  <p>One-time setup: connect your Spotify account to get a refresh token for the WMP playlist sync.</p>
+
+  <div class="step"><strong>Step 1:</strong> Click the button below to log in with Spotify</div>
+  <div class="step"><strong>Step 2:</strong> Copy the refresh token that appears</div>
+  <div class="step"><strong>Step 3:</strong> Paste it into your Netlify environment variables as <code>SPOTIFY_REFRESH_TOKEN</code></div>
+
+  <button onclick="startAuth()">Connect Spotify</button>
+
+  <div class="token-box" id="token-box">
+    <label>✅ Refresh Token (copy this into Netlify → Environment Variables → SPOTIFY_REFRESH_TOKEN)</label>
+    <textarea id="refresh-token" rows="4" readonly></textarea>
+    <div class="success">Done! You can close this page. The token never expires unless you revoke access.</div>
+  </div>
+  <div class="error" id="error-msg" style="display:none"></div>
+</div>
+
+<script>
+  const CLIENT_ID    = '7cd580ba84714012a9dc4a26a656814c';
+  const REDIRECT_URI = 'https://toshahahaha.github.io/tosha_xp/spotify-auth.html';
+  const SCOPES       = 'playlist-read-private playlist-read-collaborative';
+
+  // ── PKCE helpers ──────────────────────────────────────────────
+  function randBytes(n) {
+    return crypto.getRandomValues(new Uint8Array(n));
+  }
+  function base64url(buf) {
+    return btoa(String.fromCharCode(...buf))
+      .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+  async function pkce() {
+    const verifier  = base64url(randBytes(48));
+    const digest    = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+    const challenge = base64url(new Uint8Array(digest));
+    return { verifier, challenge };
+  }
+
+  // ── Start auth ─────────────────────────────────────────────────
+  async function startAuth() {
+    const { verifier, challenge } = await pkce();
+    sessionStorage.setItem('pkce_verifier', verifier);
+    const params = new URLSearchParams({
+      client_id:             CLIENT_ID,
+      response_type:         'code',
+      redirect_uri:          REDIRECT_URI,
+      scope:                 SCOPES,
+      code_challenge_method: 'S256',
+      code_challenge:        challenge,
+    });
+    window.location.href = 'https://accounts.spotify.com/authorize?' + params;
+  }
+
+  // ── Handle redirect back from Spotify ─────────────────────────
+  async function handleCallback() {
+    const params   = new URLSearchParams(window.location.search);
+    const code     = params.get('code');
+    const errorMsg = params.get('error');
+
+    if (errorMsg) {
+      document.getElementById('error-msg').style.display = 'block';
+      document.getElementById('error-msg').textContent   = 'Spotify error: ' + errorMsg;
+      return;
+    }
+    if (!code) return; // not a callback, normal page load
+
+    const verifier = sessionStorage.getItem('pkce_verifier');
+    if (!verifier) {
+      document.getElementById('error-msg').style.display = 'block';
+      document.getElementById('error-msg').textContent   = 'Missing PKCE verifier — please try again.';
+      return;
+    }
+
+    // Exchange code for tokens via our Netlify function (avoids CORS)
+    try {
+      const res = await fetch('/.netlify/functions/spotify-token', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ code, verifier, redirect_uri: REDIRECT_URI, grant_type: 'authorization_code' }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      document.getElementById('refresh-token').value = data.refresh_token;
+      document.getElementById('token-box').style.display = 'block';
+
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+    } catch (e) {
+      document.getElementById('error-msg').style.display = 'block';
+      document.getElementById('error-msg').textContent   = 'Token exchange failed: ' + e.message;
+    }
+  }
+
+  handleCallback();
+</script>
+</body>
+</html>
