@@ -2475,17 +2475,6 @@ button, input, textarea, select, label {
   padding: 4px 8px;
   flex-shrink: 0;
   letter-spacing: 0.3px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-}
-.wmp-spotify-badge {
-  font-size: 8px;
-  color: #1db954;
-  font-weight: normal;
-  white-space: nowrap;
-  letter-spacing: 0;
 }
 .wmp-album-art {
   display: flex;
@@ -2499,42 +2488,6 @@ button, input, textarea, select, label {
 .wmp-album-art svg {
   border: 1px solid #6a8aaa;
   border-radius: 2px;
-}
-.wmp-album-art img {
-  border: 1px solid #6a8aaa;
-  border-radius: 2px;
-}
-
-/* Now-playing song info labels */
-.wmp-np-info {
-  padding: 4px 6px 2px;
-  border-bottom: 1px solid #8aaace;
-  flex-shrink: 0;
-}
-.wmp-np-title {
-  font-size: 10px;
-  font-weight: bold;
-  color: #1a2a5a;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 132px;
-}
-.wmp-np-artist {
-  font-size: 9px;
-  color: #3a5a8a;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 132px;
-}
-.wmp-np-album {
-  font-size: 9px;
-  color: #6a8aaa;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 132px;
 }
 
 /* Playlist in now-playing panel */

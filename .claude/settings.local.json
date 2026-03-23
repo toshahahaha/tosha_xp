@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:mitchivin.com)"
+      "WebFetch(domain:mitchivin.com)",
+      "Bash(python3:*)"
     ]
   }
 }

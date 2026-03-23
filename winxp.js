@@ -2433,46 +2433,13 @@ function ipodRewind() {
   let audio, canvas, playBtn, statusBar, seekFill, seekThumb,
       elapsedEl, totalEl, infobarText, vizLabel;
 
-  // ── SDK state mirror ─────────────────────────────────────────
-  let wmpSdkActive  = false;   // true once Spotify SDK device is ready
-  let wmpSdkDur     = 0;       // track duration in ms (from SDK state)
-  let wmpSdkPos     = 0;       // last known position in ms
-  let wmpSdkStateTs = 0;       // performance.now() when wmpSdkPos was last set
-  let wmpSeekInterval = null;  // interval to interpolate seek bar from SDK
-
   // ─────────────────────────────────────────────────────────────
   // Public API
   // ─────────────────────────────────────────────────────────────
-  window.wmpPlayPause = () => {
-    if (wmpSdkActive && WMP_SONGS[wmpIdx] && WMP_SONGS[wmpIdx].uri) {
-      window.spotifyTogglePlay && window.spotifyTogglePlay();
-    } else {
-      wmpEnsureCtx();
-      wmpPlaying ? pause() : play();
-    }
-  };
-  window.wmpStop = () => {
-    if (wmpSdkActive && WMP_SONGS[wmpIdx] && WMP_SONGS[wmpIdx].uri) {
-      window.spotifyTogglePlay && window.spotifyTogglePlay();
-    } else {
-      pause();
-      if (audio) { audio.currentTime = 0; wmpUpdateSeek(); }
-    }
-  };
-  window.wmpPrev = () => {
-    if (wmpSdkActive && WMP_SONGS[wmpIdx] && WMP_SONGS[wmpIdx].uri) {
-      window.spotifyPrevTrack && window.spotifyPrevTrack();
-    } else {
-      wmpLoadTrack((wmpIdx - 1 + WMP_SONGS.length) % WMP_SONGS.length, true);
-    }
-  };
-  window.wmpNext = () => {
-    if (wmpSdkActive && WMP_SONGS[wmpIdx] && WMP_SONGS[wmpIdx].uri) {
-      window.spotifyNextTrack && window.spotifyNextTrack();
-    } else {
-      wmpLoadTrack(wmpShuffle ? wmpRandNext() : (wmpIdx+1) % WMP_SONGS.length, true);
-    }
-  };
+  window.wmpPlayPause = () => { wmpEnsureCtx(); wmpPlaying ? pause() : play(); };
+  window.wmpStop      = () => { pause(); if (audio) { audio.currentTime = 0; wmpUpdateSeek(); } };
+  window.wmpPrev      = () => { wmpLoadTrack((wmpIdx - 1 + WMP_SONGS.length) % WMP_SONGS.length, true); };
+  window.wmpNext      = () => { wmpLoadTrack(wmpShuffle ? wmpRandNext() : (wmpIdx+1) % WMP_SONGS.length, true); };
   window.wmpToggleShuffle = () => {
     wmpShuffle = !wmpShuffle;
     const b = document.getElementById('wmp-shuffle-btn');
@@ -2483,64 +2450,18 @@ function ipodRewind() {
     const b = document.getElementById('wmp-repeat-btn');
     if (b) b.classList.toggle('active', wmpRepeat);
   };
-  window.wmpSetVolume = v => {
-    if (wmpSdkActive) {
-      window.spotifySetVolume && window.spotifySetVolume(v);
-    }
-    if (audio) audio.volume = v / 100;
-  };
+  window.wmpSetVolume = v => { if (audio) audio.volume = v / 100; };
   window.wmpSeek = e => {
     const bar = document.getElementById('wmp-seekbar');
-    if (!bar) return;
+    if (!bar || !audio || !audio.duration) return;
     const pct = Math.max(0, Math.min(1, e.offsetX / bar.clientWidth));
-    if (wmpSdkActive && wmpSdkDur > 0) {
-      window.spotifySeekTo && window.spotifySeekTo(Math.round(pct * wmpSdkDur));
-    } else if (audio && audio.duration) {
-      audio.currentTime = pct * audio.duration;
-    }
+    audio.currentTime = pct * audio.duration;
   };
   window.wmpCycleViz = dir => {
     if (!wmpPresetKeys.length) return;
     wmpPresetIdx = (wmpPresetIdx + dir + wmpPresetKeys.length) % wmpPresetKeys.length;
     wmpApplyPreset(wmpPresetKeys[wmpPresetIdx]);
   };
-
-  // ─────────────────────────────────────────────────────────────
-  // Spotify sync API — called by spotify-sync.js
-  // ─────────────────────────────────────────────────────────────
-
-  // Replace the WMP playlist with tracks from Spotify
-  window.wmpSetSpotifyPlaylist = function(songs) {
-    if (!songs || !songs.length) return;
-
-    // Replace the internal song library
-    WMP_SONGS.length = 0;
-    songs.forEach(s => WMP_SONGS.push(s));
-
-    // Rebuild the playlist UI
-    wmpBuildPlaylist();
-
-    // If nothing playing, load the first track silently
-    if (!wmpPlaying) {
-      wmpLoadTrack(0, false);
-    }
-
-    console.log('[WMP] Spotify playlist loaded:', songs.length, 'tracks');
-  };
-
-  // Update the "Now Playing" panel header with the playlist name
-  window.wmpSetSpotifyName = function(name) {
-    const el = document.getElementById('wmp-spotify-name');
-    if (el) el.textContent = name;
-  };
-
-  // If songs arrived before WMP was ready, apply them now on init
-  function wmpApplyPendingSpotify() {
-    if (window._spotifyPendingSongs) {
-      window.wmpSetSpotifyPlaylist(window._spotifyPendingSongs);
-      delete window._spotifyPendingSongs;
-    }
-  }
 
   // ─────────────────────────────────────────────────────────────
   // Init — called once when the WMP window first opens
@@ -2579,99 +2500,6 @@ function ipodRewind() {
 
     // Boot Butterchurn visualizer immediately (no audio needed yet)
     wmpBootButterchurn();
-
-    // Apply any Spotify tracks that arrived before WMP was open
-    wmpApplyPendingSpotify();
-
-    // ── Wire Spotify Web Playback SDK callbacks ───────────────
-    // Called by spotify-player.js once the device is ready
-    function onSdkReady(deviceId) {
-      console.log('[WMP] Spotify SDK device ready:', deviceId);
-      wmpSdkActive = true;
-      if (statusBar) statusBar.textContent = '♫ Spotify Premium — ready';
-      const badge = document.getElementById('wmp-spotify-badge');
-      if (badge) badge.style.color = '#5aff5a';
-    }
-
-    window.onSpotifyPlayerReady = onSdkReady;
-
-    // If the SDK was already ready before the WMP window opened, apply now
-    if (window.spotifyPlayerReady && window.spotifyDeviceId) {
-      onSdkReady(window.spotifyDeviceId);
-    }
-
-    // Called every time the SDK player state changes (also stored globally for late-init)
-    window.onSpotifyPlayerState = function (state) {
-      if (!state) return;
-
-      const track    = state.track_window && state.track_window.current_track;
-      const paused   = state.paused;
-      const posMs    = state.position;
-      const durMs    = state.duration;
-
-      // Store for seek interpolation
-      wmpSdkDur     = durMs;
-      wmpSdkPos     = posMs;
-      wmpSdkStateTs = performance.now();
-
-      // Sync internal playing flag
-      wmpPlaying = !paused;
-      wmpSetPlayIcon(!paused);
-
-      if (!paused) wmpStartPresetCycle();
-      else clearInterval(wmpPresetTimer);
-
-      // Update seek bar
-      wmpSdkUpdateSeek();
-
-      // Sync track info if we can match by URI
-      if (track) {
-        const title  = track.name;
-        const artist = (track.artists || []).map(a => a.name).join(', ');
-        const album  = track.album && track.album.name ? track.album.name : '';
-        const art    = track.album && track.album.images && track.album.images[0]
-                       ? track.album.images[0].url : '';
-
-        if (infobarText) infobarText.textContent = (paused ? '' : '▶  ') + title + ' — ' + artist;
-        if (statusBar)   statusBar.textContent   = (paused ? 'Paused' : 'Playing') + ': ' + title + ' — ' + artist;
-
-        // Try to match the playing track to our WMP_SONGS array by URI
-        const uri = track.uri;
-        const matchIdx = WMP_SONGS.findIndex(s => s.uri === uri);
-        if (matchIdx !== -1 && matchIdx !== wmpIdx) {
-          wmpIdx = matchIdx;
-          document.querySelectorAll('.wmp-pl-item').forEach((el, i) => {
-            el.classList.toggle('active', i === wmpIdx);
-            const sym = el.querySelector('.wmp-pl-playing');
-            if (sym) sym.style.display = i === wmpIdx ? 'inline' : 'none';
-          });
-        }
-
-        // Update album art in WMP now-playing panel if present
-        wmpSetAlbumArt(art);
-
-        // Update now-playing labels
-        const titleEl  = document.getElementById('wmp-np-title');
-        const artistEl = document.getElementById('wmp-np-artist');
-        const albumEl  = document.getElementById('wmp-np-album');
-        if (titleEl)  titleEl.textContent  = title;
-        if (artistEl) artistEl.textContent = artist;
-        if (albumEl)  albumEl.textContent  = album;
-      }
-    };
-
-    // Interpolate seek bar between SDK state updates
-    clearInterval(wmpSeekInterval);
-    wmpSeekInterval = setInterval(() => {
-      if (!wmpSdkActive || !wmpPlaying || wmpSdkDur <= 0) return;
-      const elapsed = performance.now() - wmpSdkStateTs;
-      const pos = Math.min(wmpSdkPos + elapsed, wmpSdkDur);
-      const pct = pos / wmpSdkDur;
-      if (seekFill)  seekFill.style.width  = (pct * 100) + '%';
-      if (seekThumb) seekThumb.style.left  = (pct * 100) + '%';
-      if (elapsedEl) elapsedEl.textContent = fmtTime(pos / 1000);
-      if (totalEl)   totalEl.textContent   = fmtTime(wmpSdkDur / 1000);
-    }, 500);
   };
 
   // ─────────────────────────────────────────────────────────────
@@ -2825,8 +2653,11 @@ function ipodRewind() {
     wmpIdx = idx;
     const song = WMP_SONGS[idx];
 
-    if (infobarText) infobarText.textContent = song.title + ' — ' + song.artist;
-    if (statusBar)   statusBar.textContent   = song.title + ' — ' + song.artist;
+    audio.src = song.src;
+    audio.load();
+
+    if (infobarText) infobarText.textContent = `${song.title} — ${song.artist}`;
+    if (statusBar)   statusBar.textContent   = `${song.title} — ${song.artist}`;
 
     document.querySelectorAll('.wmp-pl-item').forEach((el, i) => {
       el.classList.toggle('active', i === idx);
@@ -2834,42 +2665,10 @@ function ipodRewind() {
       if (sym) sym.style.display = i === idx ? 'inline' : 'none';
     });
 
-    // Update now-playing labels
-    const titleEl  = document.getElementById('wmp-np-title');
-    const artistEl = document.getElementById('wmp-np-artist');
-    const albumEl  = document.getElementById('wmp-np-album');
-    if (titleEl)  titleEl.textContent  = song.title;
-    if (artistEl) artistEl.textContent = song.artist;
-    if (albumEl)  albumEl.textContent  = song.album || '';
-
-    // Update album art if available
-    wmpSetAlbumArt(song.albumArt || '');
-
-    // ── If SDK is ready and this is a Spotify track, use SDK ──
-    if (wmpSdkActive && song.uri) {
-      if (autoplay) {
-        // Play via the playlist context so next/prev follow the playlist order
-        const contextUri = 'spotify:playlist:' + (window.SPOTIFY_CONFIG && window.SPOTIFY_CONFIG.playlistId);
-        window.spotifyPlayContext && window.spotifyPlayContext(contextUri, { uri: song.uri });
-        wmpPlaying = true;
-        wmpSetPlayIcon(true);
-        wmpStartPresetCycle();
-      } else {
-        wmpPlaying = false;
-        wmpSetPlayIcon(false);
-      }
-      return;
-    }
-
-    // ── Fallback: use <audio> element (local mp3 or preview_url) ──
-    if (song.src) {
-      audio.src = song.src;
-      audio.load();
-      audio.addEventListener('loadedmetadata', () => {
-        if (totalEl) totalEl.textContent = fmtTime(audio.duration);
-        wmpUpdateSeek();
-      }, { once: true });
-    }
+    audio.addEventListener('loadedmetadata', () => {
+      if (totalEl) totalEl.textContent = fmtTime(audio.duration);
+      wmpUpdateSeek();
+    }, { once: true });
 
     if (autoplay) play();
     else {
@@ -2928,16 +2727,6 @@ function ipodRewind() {
     if (totalEl)   totalEl.textContent   = fmtTime(audio.duration);
   }
 
-  // SDK seek bar update (called from onSpotifyPlayerState)
-  function wmpSdkUpdateSeek() {
-    if (wmpSdkDur <= 0) return;
-    const pct = wmpSdkPos / wmpSdkDur;
-    if (seekFill)  seekFill.style.width  = (pct * 100) + '%';
-    if (seekThumb) seekThumb.style.left  = (pct * 100) + '%';
-    if (elapsedEl) elapsedEl.textContent = fmtTime(wmpSdkPos / 1000);
-    if (totalEl)   totalEl.textContent   = fmtTime(wmpSdkDur / 1000);
-  }
-
   // ─────────────────────────────────────────────────────────────
   // Playlist sidebar
   // ─────────────────────────────────────────────────────────────
@@ -2972,23 +2761,6 @@ function ipodRewind() {
     let n;
     do { n = Math.floor(Math.random() * WMP_SONGS.length); } while (n === wmpIdx && WMP_SONGS.length > 1);
     return n;
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // Album art helper
-  // ─────────────────────────────────────────────────────────────
-  function wmpSetAlbumArt(url) {
-    const img   = document.getElementById('wmp-album-art');
-    const svg   = document.getElementById('wmp-album-art-placeholder');
-    if (!img) return;
-    if (url) {
-      img.src = url;
-      img.style.display = 'block';
-      if (svg) svg.style.display = 'none';
-    } else {
-      img.style.display = 'none';
-      if (svg) svg.style.display = '';
-    }
   }
 
 })();
