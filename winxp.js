@@ -2500,6 +2500,17 @@ function ipodRewind() {
       if (wmpRepeat) { audio.currentTime = 0; play(); }
       else window.wmpNext();
     });
+    // Connect audio to AudioContext analyser lazily on first play
+    // (must happen after user gesture and after context is running)
+    audio.addEventListener('playing', () => {
+      if (!wmpSource && wmpAudioCtx && wmpAudioCtx.state === 'running') {
+        try {
+          wmpSource = wmpAudioCtx.createMediaElementSource(audio);
+          wmpSource.connect(wmpAnalyser);
+          wmpAnalyser.connect(wmpAudioCtx.destination);
+        } catch(e) {}
+      }
+    }, { once: true });
 
     // Size the canvas to fill its container
     wmpResizeCanvas();
@@ -2589,19 +2600,8 @@ function ipodRewind() {
   // ─────────────────────────────────────────────────────────────
   function wmpEnsureCtx() {
     if (!wmpAudioCtx) return;
-    // Resume if suspended (autoplay policy)
-    const doConnect = () => {
-      // Connect audio element → analyser → output (only once, only when running)
-      if (!wmpSource && audio) {
-        wmpSource = wmpAudioCtx.createMediaElementSource(audio);
-        wmpSource.connect(wmpAnalyser);
-        wmpAnalyser.connect(wmpAudioCtx.destination);
-      }
-    };
     if (wmpAudioCtx.state === 'suspended') {
-      wmpAudioCtx.resume().then(doConnect).catch(() => {});
-    } else {
-      doConnect();
+      wmpAudioCtx.resume().catch(() => {});
     }
   }
 
