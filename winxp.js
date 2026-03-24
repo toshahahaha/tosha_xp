@@ -357,19 +357,26 @@ const IPOD_SONGS = [
     album:  "Pretty. Odd.",
     art:    "https://upload.wikimedia.org/wikipedia/en/4/4d/Panicatthedisco-prettyodd.jpg"
   },
+  {
+    src:    "CSIRAC.mp3",
+    title:  "CSIRAC",
+    artist: "Ninajirachi",
+    album:  "CSIRAC",
+    art:    ""
+  },
 ];
 
 // ─── Playlists ──────────────────────────────────────────
 // Each playlist holds indices into IPOD_SONGS
 const IPOD_PLAYLISTS = [
-  { name: "now",  songs: [0] },
+  { name: "now",  songs: [0, 2] },
   { name: "then", songs: [1] },
 ];
 
 // ─── Playback state ─────────────────────────────────────
 let ipodPlaying  = false;
 let ipodSongIdx  = 0;
-let ipodQueue    = [0, 1];
+let ipodQueue    = [0, 1, 2];
 let ipodQueuePos = 0;
 
 // ─── Navigation state ───────────────────────────────────
@@ -2413,6 +2420,12 @@ function ipodRewind() {
       artist: 'Panic! at the Disco',
       album:  'Pretty. Odd.',
       src:    'That Green Gentleman.mp3'
+    },
+    {
+      title:  'CSIRAC',
+      artist: 'Ninajirachi',
+      album:  'CSIRAC',
+      src:    'CSIRAC.mp3'
     }
   ];
 
