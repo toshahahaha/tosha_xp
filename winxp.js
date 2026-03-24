@@ -2500,17 +2500,9 @@ function ipodRewind() {
       if (wmpRepeat) { audio.currentTime = 0; play(); }
       else window.wmpNext();
     });
-    // Connect audio to AudioContext analyser lazily on first play
-    // (must happen after user gesture and after context is running)
-    audio.addEventListener('playing', () => {
-      if (!wmpSource && wmpAudioCtx && wmpAudioCtx.state === 'running') {
-        try {
-          wmpSource = wmpAudioCtx.createMediaElementSource(audio);
-          wmpSource.connect(wmpAnalyser);
-          wmpAnalyser.connect(wmpAudioCtx.destination);
-        } catch(e) {}
-      }
-    }, { once: true });
+    // Audio plays natively through the <audio> element.
+    // We do NOT use createMediaElementSource so audio is never hijacked
+    // by the AudioContext — this ensures playback works on file:// and hosted.
 
     // Size the canvas to fill its container
     wmpResizeCanvas();
@@ -2698,11 +2690,11 @@ function ipodRewind() {
   // ─────────────────────────────────────────────────────────────
   // Play / Pause
   // ─────────────────────────────────────────────────────────────
-  async function play() {
+  function play() {
+    // Resume AudioContext for Butterchurn visuals (does not affect audio output)
     if (wmpAudioCtx && wmpAudioCtx.state === 'suspended') {
-      await wmpAudioCtx.resume();
+      wmpAudioCtx.resume().catch(() => {});
     }
-    wmpEnsureCtx();
     audio.play().then(() => {
       wmpPlaying = true;
       wmpSetPlayIcon(true);
