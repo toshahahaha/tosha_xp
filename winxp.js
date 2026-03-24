@@ -2588,15 +2588,20 @@ function ipodRewind() {
   // Connects the audio element to the analyser so visuals react to music
   // ─────────────────────────────────────────────────────────────
   function wmpEnsureCtx() {
+    if (!wmpAudioCtx) return;
     // Resume if suspended (autoplay policy)
-    if (wmpAudioCtx && wmpAudioCtx.state === 'suspended') {
-      wmpAudioCtx.resume();
-    }
-    // Connect audio element → analyser → output (only once)
-    if (!wmpSource && wmpAudioCtx && audio) {
-      wmpSource = wmpAudioCtx.createMediaElementSource(audio);
-      wmpSource.connect(wmpAnalyser);
-      wmpAnalyser.connect(wmpAudioCtx.destination);
+    const doConnect = () => {
+      // Connect audio element → analyser → output (only once, only when running)
+      if (!wmpSource && audio) {
+        wmpSource = wmpAudioCtx.createMediaElementSource(audio);
+        wmpSource.connect(wmpAnalyser);
+        wmpAnalyser.connect(wmpAudioCtx.destination);
+      }
+    };
+    if (wmpAudioCtx.state === 'suspended') {
+      wmpAudioCtx.resume().then(doConnect).catch(() => {});
+    } else {
+      doConnect();
     }
   }
 
