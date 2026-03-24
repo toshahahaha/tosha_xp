@@ -2693,7 +2693,10 @@ function ipodRewind() {
   // ─────────────────────────────────────────────────────────────
   // Play / Pause
   // ─────────────────────────────────────────────────────────────
-  function play() {
+  async function play() {
+    if (wmpAudioCtx && wmpAudioCtx.state === 'suspended') {
+      await wmpAudioCtx.resume();
+    }
     wmpEnsureCtx();
     audio.play().then(() => {
       wmpPlaying = true;
