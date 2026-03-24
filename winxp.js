@@ -358,7 +358,7 @@ const IPOD_SONGS = [
     art:    "https://upload.wikimedia.org/wikipedia/en/4/4d/Panicatthedisco-prettyodd.jpg"
   },
   {
-    src:    "CSIRAC.mp3",
+    src:    "CSIRAC.m4a",
     title:  "CSIRAC",
     artist: "Ninajirachi",
     album:  "CSIRAC",
@@ -2425,7 +2425,7 @@ function ipodRewind() {
       title:  'CSIRAC',
       artist: 'Ninajirachi',
       album:  'CSIRAC',
-      src:    'CSIRAC.mp3'
+      src:    'CSIRAC.m4a'
     }
   ];
 
