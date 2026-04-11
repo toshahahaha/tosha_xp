@@ -355,21 +355,21 @@ function $(id) { return document.getElementById(id); }
 // ─── Song library ───────────────────────────────────────
 const IPOD_SONGS = [
   {
-    src:    "iPod Touch.mp3",
+    src:    "tunes/iPod Touch.mp3",
     title:  "iPod Touch",
     artist: "Ninajirachi",
     album:  "I Love My Computer",
     art:    "https://i1.sndcdn.com/artworks-IXsnvZeztxgQoL29-INTj2g-t500x500.png"
   },
   {
-    src:    "That Green Gentleman.mp3",
+    src:    "tunes/That Green Gentleman.mp3",
     title:  "That Green Gentleman",
     artist: "Panic! at the Disco",
     album:  "Pretty. Odd.",
     art:    "https://upload.wikimedia.org/wikipedia/en/4/4d/Panicatthedisco-prettyodd.jpg"
   },
   {
-    src:    "CSIRAC.m4a",
+    src:    "tunes/CSIRAC.m4a",
     title:  "CSIRAC",
     artist: "Ninajirachi",
     album:  "CSIRAC",
@@ -2424,19 +2424,19 @@ function ipodRewind() {
       title:  'iPod Touch',
       artist: 'Ninajirachi',
       album:  'I Love My Computer',
-      src:    'iPod Touch.mp3'
+      src:    'tunes/iPod Touch.mp3'
     },
     {
       title:  'That Green Gentleman',
       artist: 'Panic! at the Disco',
       album:  'Pretty. Odd.',
-      src:    'That Green Gentleman.mp3'
+      src:    'tunes/That Green Gentleman.mp3'
     },
     {
       title:  'CSIRAC',
       artist: 'Ninajirachi',
       album:  'CSIRAC',
-      src:    'CSIRAC.m4a'
+      src:    'tunes/CSIRAC.m4a'
     }
   ];
 
