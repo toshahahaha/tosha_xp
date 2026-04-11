@@ -2525,8 +2525,7 @@ function ipodRewind() {
     // Load first track (no autoplay until user clicks)
     wmpLoadTrack(0, false);
 
-    // Boot Butterchurn — defer until canvas has real layout dimensions
-    requestAnimationFrame(() => requestAnimationFrame(wmpBootButterchurn));
+    // Butterchurn boots on first play() to guarantee canvas has real dimensions
   };
 
   // ─────────────────────────────────────────────────────────────
@@ -2535,11 +2534,6 @@ function ipodRewind() {
   function wmpBootButterchurn() {
     if (typeof window.butterchurn === 'undefined' || typeof window.butterchurnPresets === 'undefined') {
       setTimeout(wmpBootButterchurn, 300);
-      return;
-    }
-    // Wait until canvas has real layout dimensions (it's 0x0 if window not yet visible)
-    if (!canvas || canvas.offsetWidth === 0 || canvas.offsetHeight === 0) {
-      setTimeout(wmpBootButterchurn, 100);
       return;
     }
 
@@ -2600,9 +2594,6 @@ function ipodRewind() {
     // Start Butterchurn render loop
     cancelAnimationFrame(wmpVizRaf);
     wmpRenderLoop();
-
-    // Re-check canvas size after DOM has settled (canvas may have been 0x0 at boot time)
-    setTimeout(wmpResizeCanvas, 100);
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -2714,6 +2705,8 @@ function ipodRewind() {
   // Play / Pause
   // ─────────────────────────────────────────────────────────────
   function play() {
+    // Boot Butterchurn on first play — guaranteed canvas has real dimensions here
+    if (!wmpVisualizer) wmpBootButterchurn();
     // Resume AudioContext for Butterchurn visuals (does not affect audio output)
     if (wmpAudioCtx && wmpAudioCtx.state === 'suspended') {
       wmpAudioCtx.resume().catch(() => {});
