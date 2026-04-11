@@ -2525,8 +2525,8 @@ function ipodRewind() {
     // Load first track (no autoplay until user clicks)
     wmpLoadTrack(0, false);
 
-    // Boot Butterchurn visualizer immediately (no audio needed yet)
-    wmpBootButterchurn();
+    // Boot Butterchurn — defer until canvas has real layout dimensions
+    requestAnimationFrame(() => requestAnimationFrame(wmpBootButterchurn));
   };
 
   // ─────────────────────────────────────────────────────────────
@@ -2535,6 +2535,11 @@ function ipodRewind() {
   function wmpBootButterchurn() {
     if (typeof window.butterchurn === 'undefined' || typeof window.butterchurnPresets === 'undefined') {
       setTimeout(wmpBootButterchurn, 300);
+      return;
+    }
+    // Wait until canvas has real layout dimensions (it's 0x0 if window not yet visible)
+    if (!canvas || canvas.offsetWidth === 0 || canvas.offsetHeight === 0) {
+      setTimeout(wmpBootButterchurn, 100);
       return;
     }
 
