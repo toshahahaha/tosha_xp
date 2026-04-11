@@ -78,257 +78,265 @@ button, input, textarea, select, label {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  /* Flat periwinkle-blue body, matching screenshot */
-  background: #5a6db5;
+  display: block;
+  /* Deep royal blue outer — exactly #002d99 like MitchIvin */
+  background: #002d99;
 }
 
-/* Fine dot-matrix texture over the whole screen — like the screenshot */
-#login-screen::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background-image:
-    radial-gradient(circle, rgba(255,255,255,0.18) 1px, transparent 1px);
-  background-size: 3px 3px;
-  opacity: 0.45;
-}
-
-/* All direct children sit above the texture */
-#login-screen > * { position: relative; z-index: 1; }
-
-/* ── Top bar: narrow dark navy, no content ── */
+/* ── Top dark navy bar (matches MitchIvin exactly) ── */
 .login-top-bar {
-  height: 58px;
-  background: #1a2f8a;
-  /* thin bright line at very bottom of top bar */
-  border-bottom: 1px solid rgba(255,255,255,0.18);
-  flex-shrink: 0;
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 38px;
+  background: #002d99;
+  z-index: 2;
 }
 
-/* ── Center area ── */
-.login-center {
-  flex: 1;
+/* ── Inner lighter-blue center panel ── */
+.login-screen-inner {
+  position: absolute;
+  left: 0; right: 0;
+  /* Sit just below the top bar */
+  top: 38px;
+  /* Leaves 76px at bottom for dark blue bottom bar area */
+  height: calc(100% - 38px - 76px);
+  /* Lighter periwinkle-blue, matching MitchIvin's rgb(88,124,219) */
+  background: #587cdb;
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,0.14) 1px, transparent 1px);
+  background-size: 3px 3px;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  /* Orange accent line at bottom edge of the inner panel */
+  border-bottom: 2px solid #d4600a;
 }
 
-/* ── LEFT: logo + instruction ── */
+/* ── Center flex row inside the inner panel ── */
+.login-screen-center {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── LEFT: XP logo image + instruction ── */
 .login-left {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 28px;
-  color: white;
-  padding: 0 40px;
+  padding: 0 50px;
+  gap: 16px;
+  /* Nudge slightly above center to match MitchIvin's visual balance */
+  padding-bottom: 40px;
 }
 
-.login-left .logo-area {
+.login-logo-block {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 2px;
 }
 
-/* Windows XP colored flag */
-.login-flag {
-  width: 88px;
+.xp-logo-image {
+  /* Matches MitchIvin's flag size */
+  width: 130px;
   height: auto;
-  filter: drop-shadow(0 6px 16px rgba(0,0,0,0.35));
   user-select: none;
   -webkit-user-drag: none;
+  display: block;
   margin-bottom: 4px;
 }
 
-/* "ToshaXP" wordmark */
-.login-xp-logo {
-  font-size: 52px;
-  font-weight: 800;
-  font-family: 'Wix Madefor Display', 'Franklin Gothic Medium', Tahoma, sans-serif;
-  color: white;
+/* "Tosha xp" wordmark line */
+.login-wordmark-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
   line-height: 1;
-  letter-spacing: -1px;
-  text-shadow: 1px 2px 8px rgba(0,0,60,0.3);
 }
 
-.login-xp-logo sup {
-  font-size: 24px;
-  font-style: italic;
-  font-weight: 800;
-  color: #e07030;
+.login-wordmark-name {
+  font-family: 'Wix Madefor Display', 'Franklin Gothic Medium', Tahoma, sans-serif;
+  font-size: 42px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.5px;
+  text-shadow: 1px 2px 4px rgba(0,0,60,0.4);
+}
+
+.login-wordmark-xp {
   font-family: 'Wix Madefor Display', Tahoma, sans-serif;
-  vertical-align: super;
-  margin-left: 1px;
-}
-
-.login-xp-sub {
+  font-size: 24px;
+  font-weight: 700;
   font-style: italic;
-  font-size: 14px;
-  color: rgba(255,255,255,0.90);
-  font-family: 'Work Sans', Tahoma, sans-serif;
-  font-weight: 400;
-  letter-spacing: 0.1px;
+  color: #e07030;
+  margin-left: 3px;
+  margin-top: 4px;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.4);
 }
 
-.login-instruction {
-  font-size: 17px;
-  color: rgba(255,255,255,0.93);
-  font-family: 'Work Sans', Tahoma, sans-serif;
-  font-weight: 400;
+.login-wordmark-sub {
+  font-family: Tahoma, Arial, sans-serif;
+  font-size: 13px;
+  font-style: italic;
+  color: rgba(255,255,255,0.9);
   text-align: center;
+  margin-top: 2px;
+}
+
+.left-text {
+  font-family: Tahoma, Arial, sans-serif;
+  font-size: 19px;
+  color: #fff;
+  text-align: center;
+  margin-top: 8px;
+}
+
+.desktop-login-instruction {
+  font-family: Tahoma, Arial, sans-serif;
+  font-size: 19px;
+  color: #fff;
+}
+
+.login-instruction-name {
+  font-family: Tahoma, Arial, sans-serif;
+  font-size: 19px;
+  color: #fff;
+  font-weight: normal;
 }
 
 /* ── Divider ── */
 .login-divider {
-  width: 1px;
+  width: 2px;
   align-self: stretch;
   margin: 40px 0;
-  background: linear-gradient(to bottom,
-    transparent 0%,
-    rgba(255,255,255,0.4) 20%,
-    rgba(255,255,255,0.4) 80%,
-    transparent 100%
-  );
   flex-shrink: 0;
+  background: linear-gradient(to bottom,
+    rgba(186,215,248,0) 0%,
+    rgb(186,215,248) 40%,
+    rgb(186,215,248) 60%,
+    rgba(186,215,248,0) 100%
+  );
 }
 
-/* ── RIGHT: user account ── */
+/* ── RIGHT: user card ── */
 .login-right {
   flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 0 40px;
+  justify-content: flex-start;
+  padding: 0 40px 40px 70px;
 }
 
-.user-button {
+.interactive {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 18px;
+  gap: 16px;
   cursor: pointer;
-  padding: 8px 14px;
+  padding: 10px 14px;
   border-radius: 4px;
-  border: 1px solid transparent;
-  background: transparent;
   transition: background 0.12s;
 }
-.user-button:hover {
-  background: rgba(255,255,255,0.10);
-  border-color: rgba(255,255,255,0.15);
+.interactive:hover {
+  background: rgba(255,255,255,0.12);
 }
 
-/* Avatar: squared with light-blue border, like the screenshot */
-.user-avatar {
-  width: 72px;
-  height: 72px;
-  border: 2px solid #8ab4e8;
-  border-radius: 3px;
-  background: #6080c0;
-  overflow: hidden;
+/* Avatar: 70×70px with 3px solid white border — exactly like MitchIvin */
+.login-user-avatar {
+  width: 70px;
+  height: 70px;
   flex-shrink: 0;
+  overflow: hidden;
+  border: 3px solid #fff;
+  background: #6080c0;
 }
-.user-avatar img {
+.login-user-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center top;
+  object-position: center center;
   display: block;
 }
 
-.user-info { color: white; }
-
-/* Large name — matches screenshot weight/size */
-.user-name {
-  font-size: 28px;
-  font-weight: 600;
-  font-family: 'Wix Madefor Display', Tahoma, sans-serif;
-  color: white;
-  letter-spacing: 0.1px;
-  line-height: 1.1;
+.text-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-/* Role: bold blue text, no pill — exactly like screenshot */
-.user-role {
+/* Name: white, 26px, weight 500, Tahoma — exactly MitchIvin */
+.login-name {
+  font-family: Tahoma, Arial, sans-serif;
+  font-size: 26px;
+  font-weight: 500;
+  color: #fff;
+  line-height: 1.2;
+}
+
+/* Role/title: navy blue #000080, bold 13px — exactly MitchIvin */
+.login-user-title {
+  font-family: Tahoma, Arial, sans-serif;
   font-size: 13px;
   font-weight: 700;
-  color: #3a5fc8;
-  font-family: 'Work Sans', Tahoma, sans-serif;
-  margin-top: 3px;
-  background: none;
-  padding: 0;
-  border-radius: 0;
-  display: block;
+  color: #000080;
+  margin-top: 2px;
 }
 
-/* ── Bottom bar ── */
-.login-bottom {
-  position: relative;
-  height: 72px;
-  flex-shrink: 0;
-  background: #1a2f8a;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-  color: white;
-  font-family: 'Work Sans', Tahoma, sans-serif;
-}
-
-/* Orange line at top of bottom bar */
-.login-bottom::before {
-  content: "";
+/* ── Bottom-left: restart button floats on dark blue ── */
+.login-turn-off {
   position: absolute;
-  left: 0; right: 0; top: 0;
-  height: 2px;
-  background: #d4600a;
-}
-
-.restart-btn {
+  bottom: 0;
+  left: 0;
+  height: 76px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  padding: 0 24px;
   cursor: pointer;
-  background: none;
-  border: none;
-  color: white;
-  font-family: var(--font-pixel);
-  font-size: 12px;
-  padding: 8px 10px;
-  border-radius: 4px;
+  color: #fff;
+  font-family: Tahoma, Arial, sans-serif;
+  font-size: 13px;
 }
-.restart-btn:hover { background: rgba(255,255,255,0.08); }
+.login-turn-off:hover { opacity: 0.85; }
 
-/* Green starburst icon matching XP restart button */
-.restart-icon {
-  width: 28px;
-  height: 28px;
-  background: radial-gradient(circle at 40% 35%, #80e060 0%, #30a030 55%, #186018 100%);
-  border-radius: 6px;
-  border: 1.5px solid rgba(0,0,0,0.3);
+.login-restart-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 6px rgba(0,0,0,0.3);
-  flex-shrink: 0;
 }
 
-.login-bottom-copy {
-  text-align: right;
-  font-size: 14px;
-  line-height: 1.4;
-  color: rgba(255,255,255,0.95);
+.login-shutdown-text {
+  font-family: Tahoma, Arial, sans-serif;
+  font-size: 13px;
+  color: #fff;
 }
-.login-bottom-sub {
-  font-size: 12px;
-  color: rgba(255,255,255,0.72);
+
+/* ── Bottom-right: copy text floats on dark blue ── */
+.login-right-bottom {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  height: 76px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 24px;
+  gap: 2px;
+}
+
+.login-bottom-detail {
+  font-family: Tahoma, Arial, sans-serif;
+  font-size: 13px;
+  color: rgba(255,255,255,0.90);
+  text-align: right;
 }
 
 /* ===================== WELCOME SCREEN ===================== */
@@ -336,13 +344,14 @@ button, input, textarea, select, label {
   position: fixed;
   inset: 0;
   z-index: 9998;
-  background: #3d6fc4;
+  /* Same deep royal blue as MitchIvin */
+  background: #002d99;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.5s;
+  transition: opacity 0.4s ease;
 }
 
 #welcome-screen.show {
@@ -352,17 +361,16 @@ button, input, textarea, select, label {
 
 .welcome-text {
   color: white;
-  font-size: 48px;
+  font-size: 42px;
   font-style: italic;
-  font-weight: 700;
-  font-family: 'Work Sans', Tahoma, sans-serif;
-  text-shadow: 2px 2px 12px rgba(0,0,80,0.5);
-  letter-spacing: 2px;
-  animation: pulse 2s ease-in-out infinite;
+  font-weight: 400;
+  font-family: Tahoma, Arial, sans-serif;
+  letter-spacing: 1px;
+  animation: welcomePulse 1.6s ease-in-out infinite;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 0.8; }
+@keyframes welcomePulse {
+  0%, 100% { opacity: 0.75; }
   50% { opacity: 1; }
 }
 

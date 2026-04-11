@@ -80,16 +80,27 @@ function doLogin() {
   const welcomeScreen = document.getElementById('welcome-screen');
   const desktop = document.getElementById('desktop');
 
+  // Play the Windows XP login sound
+  const loginSound = document.getElementById('login-sound');
+  if (loginSound) {
+    loginSound.currentTime = 0;
+    loginSound.play().catch(() => {});
+  }
+
+  // Fade out login screen
   loginScreen.style.opacity = '0';
-  loginScreen.style.transition = 'opacity 0.6s';
+  loginScreen.style.transition = 'opacity 0.5s';
 
   setTimeout(() => {
     loginScreen.style.display = 'none';
+
+    // Show welcome screen
     welcomeScreen.classList.add('show');
 
     setTimeout(() => {
+      // Fade out welcome, reveal desktop
       welcomeScreen.style.opacity = '0';
-      welcomeScreen.style.transition = 'opacity 0.8s';
+      welcomeScreen.style.transition = 'opacity 0.6s';
       desktop.classList.add('show');
 
       setTimeout(() => {
@@ -97,9 +108,9 @@ function doLogin() {
         document.getElementById('notification').classList.add('show');
         updateClock();
         setInterval(updateClock, 1000);
-      }, 800);
-    }, 1800);
-  }, 600);
+      }, 600);
+    }, 2200);
+  }, 500);
 }
 
 function doRestart() {

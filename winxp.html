@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tosha XP</title>
   <link rel="stylesheet" href="winxp.css">
+</head>
+<body>
+
+<!-- Login sound — played when user clicks to log in -->
+<audio id="login-sound" src="https://mitchivin.com/assets/sounds/login.wav" preload="auto"></audio>
 
 <!-- =================== SITE LOADING =================== -->
 <div id="site-boot" aria-hidden="false">
@@ -12,7 +17,7 @@
     <!-- Center cluster -->
     <div class="site-boot__center">
       <div class="site-boot__mark" aria-hidden="true">
-        <img class="site-boot__flagImg" src="boot_windows.png" alt="Windows Logo" draggable="false" />
+        <img class="site-boot__flagImg" src="pics/boot_windows.png" alt="Windows Logo" draggable="false" />
       </div>
 
       <div class="site-boot__nameLine" aria-hidden="true">
@@ -48,48 +53,75 @@
 <!-- =================== LOGIN SCREEN =================== -->
 <div id="login-screen">
 
-  <!-- Top dark navy bar — plain, no content -->
+  <!-- Top dark navy bar (matches MitchIvin) -->
   <div class="login-top-bar"></div>
 
-  <!-- Center: left logo + divider + right user -->
-  <div class="login-center">
+  <!-- Inner blue panel (lighter blue center block) -->
+  <div class="login-screen-inner">
+    <div class="login-screen-center">
 
-    <!-- LEFT: Windows flag + wordmark + instruction -->
-    <div class="login-left">
-      <div class="logo-area">
-        <img class="login-flag" src="boot_windows.png" alt="Windows flag" draggable="false" />
-        <div class="login-xp-logo">Tosha<sup>xp</sup></div>
-        <div class="login-xp-sub">Visual Designer &amp; Technical Sales</div>
-      </div>
-      <div class="login-instruction">To begin, click on Tosha to log in</div>
-    </div>
-
-    <!-- Vertical divider -->
-    <div class="login-divider"></div>
-
-    <!-- RIGHT: user account -->
-    <div class="login-right">
-      <div class="user-button" onclick="doLogin()">
-        <div class="user-avatar"><img src="avatar.png" alt="Tosha" draggable="false"/></div>
-        <div class="user-info">
-          <div class="user-name">Tosha</div>
-          <div class="user-role">Visual Designer &amp; Technical Sales</div>
+      <!-- LEFT: XP logo + "Tosha xp" wordmark + instruction -->
+      <div class="login-left">
+        <div class="login-logo-block">
+          <img class="xp-logo-image" src="pics/boot_windows.png" alt="Tosha XP" draggable="false" />
+          <div class="login-wordmark-line">
+            <span class="login-wordmark-name">Tosha</span><span class="login-wordmark-xp">xp</span>
+          </div>
+          <div class="login-wordmark-sub">Visual Designer &amp; Technical Sales</div>
+        </div>
+        <div class="left-text">
+          <span class="desktop-login-instruction">To begin, click on <span class="login-instruction-name">Tosha</span> to log in</span>
         </div>
       </div>
-    </div>
 
+      <!-- Vertical divider -->
+      <div class="login-divider"></div>
+
+      <!-- RIGHT: user card -->
+      <div class="login-right">
+        <div class="interactive back-gradient" onclick="doLogin()">
+          <div class="login-user-avatar">
+            <img src="pics/avatar.png" alt="User Profile" draggable="false" decoding="async" />
+          </div>
+          <div class="text-wrap">
+            <div class="login-name">Tosha</div>
+            <div class="login-user-title">Visual Designer &amp; Technical Sales</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
   </div>
 
-  <!-- Bottom dark bar -->
-  <div class="login-bottom">
-    <button class="restart-btn" onclick="doRestart()">
-      <div class="restart-icon">⟳</div>
-      Restart Tosha XP
-    </button>
-    <div class="login-bottom-copy">
-      <div>After you log on, the system's yours to explore.</div>
-      <div class="login-bottom-sub">Every detail has been designed with a purpose.</div>
+  <!-- Bottom-left: restart button -->
+  <div class="login-turn-off" onclick="doRestart()">
+    <div class="login-restart-icon" aria-hidden="true">
+      <!-- XP-style green starburst/snowflake icon -->
+      <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="sbGrad" cx="40%" cy="35%" r="65%">
+            <stop offset="0%" stop-color="#a8e060"/>
+            <stop offset="50%" stop-color="#4db830"/>
+            <stop offset="100%" stop-color="#1a6010"/>
+          </radialGradient>
+        </defs>
+        <rect width="32" height="32" rx="5" fill="url(#sbGrad)"/>
+        <!-- 8-point starburst -->
+        <g fill="white" opacity="0.95">
+          <rect x="14.5" y="5" width="3" height="22" rx="1.5"/>
+          <rect x="5" y="14.5" width="22" height="3" rx="1.5"/>
+          <rect x="14.5" y="5" width="3" height="22" rx="1.5" transform="rotate(45 16 16)"/>
+          <rect x="5" y="14.5" width="22" height="3" rx="1.5" transform="rotate(45 16 16)"/>
+        </g>
+      </svg>
     </div>
+    <div class="login-shutdown-text">Restart Tosha XP</div>
+  </div>
+
+  <!-- Bottom-right: detail copy -->
+  <div class="login-right-bottom">
+    <span class="login-bottom-detail">After you log on, the system's yours to explore.</span>
+    <span class="login-bottom-detail">Every detail has been designed with a purpose.</span>
   </div>
 
 </div>
