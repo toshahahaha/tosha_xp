@@ -2595,6 +2595,9 @@ function ipodRewind() {
     // Start Butterchurn render loop
     cancelAnimationFrame(wmpVizRaf);
     wmpRenderLoop();
+
+    // Re-check canvas size after DOM has settled (canvas may have been 0x0 at boot time)
+    setTimeout(wmpResizeCanvas, 100);
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -2644,6 +2647,10 @@ function ipodRewind() {
       // Only render if the WMP window is visible
       const win = document.getElementById('media-player');
       if (!win || !win.classList.contains('show')) return;
+      // Resume AudioContext on every frame if suspended — needed for visuals to animate
+      if (wmpAudioCtx && wmpAudioCtx.state === 'suspended') {
+        wmpAudioCtx.resume().catch(() => {});
+      }
       wmpVisualizer.render();
     };
     loop();
